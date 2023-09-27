@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  grpc-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server  
+    ports:
+      - "50051:50051"
+    volumes:
+      - ./server:/app
+      - ./generated:/app/generated
+    working_dir: /app
+    command: python server.py
+
+  grpc-client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client  
+    depends_on:
+      - grpc-server
+    volumes:
+      - ./client:/app
+      - ./generated:/app/generated
+    working_dir: /app
+    command: python client.py

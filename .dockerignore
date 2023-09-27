@@ -1,0 +1,8 @@
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.egg-info
+*.log
+*.csv
+*.json
+*.md

@@ -1,0 +1,5 @@
+grpcio
+grpcio-tools
+librosa
+soundfile
+yt-dlp

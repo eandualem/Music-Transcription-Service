@@ -1,0 +1,13 @@
+*.log
+*.csv
+*.wav
+*.ipynb_checkpoints
+*.env
+*.cache
+*.DS_Store
+*.vscode
+**/sa_speech_test.json
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.egg-info

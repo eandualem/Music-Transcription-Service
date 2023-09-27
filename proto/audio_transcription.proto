@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+service AudioTranscriptionService {
+    rpc TranscribeAudio (AudioRequest) returns (TranscriptionResponse);
+}
+
+message AudioRequest {
+    bytes audio_data = 1;
+    string transcription_service = 2; 
+}
+
+message TranscriptionResponse {
+    string transcription = 1;
+}
