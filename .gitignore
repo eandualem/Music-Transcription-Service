@@ -11,3 +11,4 @@
 **/*.pyc
 **/*.pyo
 **/*.egg-info
+*.pem

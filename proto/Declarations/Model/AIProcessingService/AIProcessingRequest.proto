@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+import "Declarations/Model/OpaqueContainer.proto";
+
+// Definition of a packet sent by the client to the AI back-end.
+message AIProcessingRequest {
+
+    // The first payload sent by the client, before sending "AudioChunk."
+    message Initialize {
+      // Client token to be used when communicating with the Lisari back-end.
+      OpaqueContainer client_token = 1;
+    }   
+  
+    // A chunk of the user's recorded audio. The chunk contains some bytes of the microphone data, sent in order.
+    message AudioChunk {
+      // Bytes of the audio stream.
+      bytes audio_data = 1;
+    }
+  
+    // The last payload sent by the client.
+    message Finalize {
+      
+      // An enumeration that defines the possible reasons for requesting finalization.
+      enum FinalizeReason {
+        // The song has successfully completed, and recording stopped automatically. The AI back-end can proceed with its processing.
+        FINALIZEREASON_SONG_COMPLETED = 0;
+        // A generic error has occurred on the client's side. The AI back-end can erase the data and terminate the connection.
+        FINALIZEREASON_ERROR = 1;
+        // The user has stopped the song. The AI back-end can erase the data and terminate the connection.
+        FINALIZEREASON_USER_STOP = 2;
+        // The user has restarted the song. The AI back-end should discard the received chunks and prepare to receive a new Initialization packet over the same open connection.
+        FINALIZEREASON_USER_RESTART = 3;
+      }
+  
+      // Reason for requesting finalization.
+      FinalizeReason finalize_reason = 1;
+    }
+  
+    // Possible payload of the AIProcessingRequest.
+    oneof payload {
+      // Initialization message. The first sent when the rpc call is started.
+      Initialize initialize = 1;
+      // Audio chunk. This message should be sent continuously while AI processing is ongoing.
+      AudioChunk audio_chunk = 2;
+      // Finalization message. Should be sent by the client to gracefully terminate AI processing.
+      Finalize finalize = 3;
+    }
+}

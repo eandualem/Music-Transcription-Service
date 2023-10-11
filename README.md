@@ -1,6 +1,6 @@
 # 🎼 Music Transcription Service 🎙️
 
-This tool is designed to transcribe music and compare singing performances with lyrics, all powered by gRPC.
+Dive into the world of music transcription! Our tool is designed to transcribe music and compare singing performances with lyrics, all powered by gRPC.
 
 ---
 
@@ -16,6 +16,7 @@ This tool is designed to transcribe music and compare singing performances with 
 
 1. **Setup the gRPC Image**
    ```bash
+   rm -r ./proto/Generated
    docker build -t grpc-builder -f Dockerfile.grpcgen .
    ```
 
@@ -26,8 +27,7 @@ This tool is designed to transcribe music and compare singing performances with 
 
 3. **Retrieve the Generated Files**
    ```bash
-   docker cp grpc-temp:/app/audio_transcription_pb2.py ./generated/
-   docker cp grpc-temp:/app/audio_transcription_pb2_grpc.py ./generated/
+   docker cp grpc-temp:/app/Generated ./proto
    ```
 
 4. **Cleanup: Remove Temporary Container**

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+import "Declarations/Model/AIPrivateInterfaceService/FetchInitialData.proto";
+import "Declarations/Model/AIPrivateInterfaceService/ReportResult.proto";
+
+// The service used by the PuglIA-developed back-end to connect with Lisari's gateway.
+service AIPrivateInterfaceService {
+  // Used to get the necessary resources to proceed with processing.
+  rpc FetchInitialData (FetchInitialDataRequest) returns (FetchInitialDataResponse) {}
+  // Used to report the completion of the AI processing operations.
+  rpc ReportResult (ReportResultRequest) returns (ReportResultResponse) {}
+}

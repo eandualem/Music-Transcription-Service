@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+import "google/protobuf/duration.proto";
+import "Declarations/Model/Report.proto";
+
+// Definition of a packet sent by the AI back-end to the client.
+message AIProcessingResponse {
+
+    // Periodic message sent while singing is ongoing and the AI is processing the score.
+    message LiveReview {
+      // Amount of time, where 0s are considered the time sent by the client in the AIProcessingRequest.Initialize message, showing how much of the recorded audio sent by the client in the chunks has been processed. In other words, the duration relative to the audio stream in the chunks that has been reviewed by the AI.
+      google.protobuf.Duration processed_duration = 1;
+  
+      // Score, ranging from 0 to 1, representing the accuracy of the singing performance since the last LiveReview message.
+      double instant_score = 20;
+      // Score, ranging from 0 to 1, representing the accuracy of the singing performance since the beginning of the performance.
+      double average_score = 21;
+    }
+  
+    // Status code describing the progress of the AI back-end processing.
+    enum StatusCode {
+      // Everything is going well, and no errors have been reported.
+      STATUSCODE_SUCCESS = 0;
+      // The client has made a mistake in the use of the rpc call. They should consider the call failed and start a new one.
+      STATUSCODE_CLIENT_ERROR_RETRY = 1;
+      // The client has made a mistake in the use of the rpc call. They should consider the call failed and not try to start it again.
+      STATUSCODE_CLIENT_ERROR_ABORT = 2;
+      // The AI back-end has encountered an internal error. The client should terminate the call connection and retry with a new one.
+      STATUSCODE_SERVER_ERROR_RETRY = 3;
+      // The AI back-end has encountered an internal error. The client should terminate the call connection and not try to start it again.
+      STATUSCODE_SERVER_ERROR_ABORT = 4;
+    }
+  
+    // Payload describing the error that occurred.
+    message Error {
+      // The ID used to correlate the error with the AI back-end log entry.
+      string correlation_id = 1;
+      // An optional description, for client developers only, to better understand the error. The string is always in English.
+      optional string debug_description = 2;
+      // An optional description that, if present, should be displayed on the UI to inform the user about the error. The string is in the user's language.
+      optional string user_description = 3;
+    }
+  
+    // Current status code of the AI back-end.
+    StatusCode status_code = 1;
+  
+    // Possible payload of the AIProcessingResponse.
+    oneof payload {
+      // The payload that the client will normally receive while the user is singing and the AI is processing live chunk data.
+      LiveReview live_review = 2;
+      // The payload containing the detailed report about the performance. This payload is sent only after a positive "AIProcessingRequest.Finalize" payload from the client.
+      Report report = 3;
+      // Description of an occurred error. The client should evaluate, based on the status code, what to do.
+      Error error = 4; 
+    }
+}

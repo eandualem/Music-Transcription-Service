@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "Declarations/Model/AIProcessingService/AIProcessingRequest.proto";
+import "Declarations/Model/AIProcessingService/AIProcessingResponse.proto";
+
+// The service used by clients to connect with the PuglIA-developed back-end.
+service AIProcessingService {
+  // The function used to process a chunk of audio data. The invocation requires two headers: Authorization, an opaque string provided by Lisari's back-end to the client; and User-Locale, the user's locale in ISO 639-1 Code format.
+  rpc Process (stream AIProcessingRequest) returns (stream AIProcessingResponse) {}
+}

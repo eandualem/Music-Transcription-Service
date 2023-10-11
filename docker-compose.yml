@@ -1,26 +1,35 @@
 version: '3'
 
 services:
-  grpc-server:
+  aiprivateinterface-service:
     build:
       context: .
-      dockerfile: Dockerfile.server  
+      dockerfile: Dockerfile.aiprivateinterface
     ports:
-      - "50051:50051"
-    volumes:
-      - ./server:/app
-      - ./generated:/app/generated
+      - "50057:50057"
     working_dir: /app
     command: python server.py
+    # environment:
+    #   - GRPC_VERBOSITY=debug
+
+  aiprocessing-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.aiprocessing
+    depends_on:
+      - aiprivateinterface-service
+    ports:
+      - "50051:50051"
+    working_dir: /app
+    command: python server.py
+    # environment:
+    #   - GRPC_VERBOSITY=debug
 
   grpc-client:
     build:
       context: .
       dockerfile: Dockerfile.client  
     depends_on:
-      - grpc-server
-    volumes:
-      - ./client:/app
-      - ./generated:/app/generated
+      - aiprocessing-service
     working_dir: /app
     command: python client.py

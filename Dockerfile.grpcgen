@@ -2,14 +2,15 @@
 
 FROM python:3.8-slim AS grpcgen
 
+RUN apt-get update && apt-get install -y protobuf-compiler
+
 WORKDIR /app
 
 # Copy requirements and install dependencies
-COPY generated/requirements_grpcgen.txt .
+COPY proto/requirements_grpcgen.txt .
 RUN pip install --no-cache-dir -r requirements_grpcgen.txt
 
 # Copy proto file
-COPY proto/audio_transcription.proto .
+COPY proto .
+RUN chmod +x generate.sh && ./generate.sh
 
-# Generate Python code from proto file
-RUN python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. ./audio_transcription.proto

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+import "google/protobuf/duration.proto";
+import "Declarations/Model/OpaqueContainer.proto";
+
+// Definition of the request for the method.
+message FetchInitialDataRequest {
+  // The opaque token received by the client on its first request.
+  OpaqueContainer client_token = 1;
+}
+
+// Definition of a packet sent by Lisari's gateway in response to the AI back-end.
+message FetchInitialDataResponse {
+  // URL, with limited time validity, that the AI back-end can use to download the lyrics of the song that the user is singing. The target file is in Lisari's lyrics CSV format.
+  string lyrics_download_url = 1;
+  // URL, with limited time validity, that the AI back-end can use to download the track that the user will sing. 
+  string track_download_url = 2;
+  // URL, with limited time validity, that the AI back-end can use to download the voice of the original singer singing the song.
+  string voice_helper_download_url = 3;
+
+  // If present, the client will not sing from the beginning of the song, but starting from the given offset.
+  optional google.protobuf.Duration start_offset = 10;
+}

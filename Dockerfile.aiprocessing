@@ -1,20 +1,26 @@
-FROM python:3.8-slim
+FROM python:3.8
 
 WORKDIR /app
+ENV PYTHONPATH /app:$PYTHONPATH
 
 # Install OS dependencies
 RUN apt-get update && \
-  apt-get install -y libsndfile1 ffmpeg && \
+  apt-get install -y libsndfile1 libgomp1 && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
 # Copy only the requirements and install Python dependencies
-COPY client/requirements.txt .
+COPY AIProcessingService/requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy only necessary files
-COPY client/ .
+# COPY AIProcessingService/sa_speech_test.json ./sa_speech_test.json
+COPY AIProcessingService/ .
 COPY proto/Generated/Declarations/ /app/Declarations/
 
-CMD ["python", "client.py"]
+CMD ["python", "server.py"]
+
+
+
+

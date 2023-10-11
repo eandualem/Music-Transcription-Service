@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+import "Declarations/Model/Report.proto";
+import "Declarations/Model/OpaqueContainer.proto";
+
+message ReportResultRequest {
+ 
+    // Status code describing the progress of the AI back-end processing.
+    enum StatusCode {
+      // Everything went well, and no errors have been reported to the client.
+      STATUSCODE_SUCCESS = 0;
+      // An error from the client interrupted the AI processing.
+      STATUSCODE_CLIENT_ERROR = 1;
+      // An error from the AI back-end interrupted the AI processing.
+      STATUSCODE_SERVER_ERROR = 2;
+    } 
+  
+    // Payload describing the error that occurred.
+    message Error {
+      // The ID used to correlate the error with the AI back-end log entry.
+      string correlation_id = 1;
+      // A code, defined by PuglIA, that better identifies the error that occurred.
+      uint64 error_code = 3;
+      // A description to better understand the error. The string is always in English.
+      string debug_description = 2;
+    }
+  
+    // The opaque token received by the client on its first request.
+    OpaqueContainer client_token = 1;
+
+    // Possible payload of the ReportResultRequest.
+    oneof payload {
+      // The same report sent to the client after its "AIProcessingRequest.Finalize" message.
+      Report report = 10;
+      // Payload sent if the StatusCode is not "SUCCESS."
+      Error error = 11;
+    }
+}
+
+message ReportResultResponse {
+
+}

@@ -1,0 +1,9 @@
+grpcio
+grpcio-tools
+# openai-whisper
+google-cloud-speech
+librosa
+numpy
+# transformers
+# torchaudio
+load_dotenv
