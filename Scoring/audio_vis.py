@@ -50,3 +50,32 @@ class AudioVis:
         plt.colorbar()
         plt.title(title)
         self._save_and_display_plot(title)
+
+    def plot_log_spectrogram(self, signal: np.array, sr: int = 22000, title: str = "Log Spectrogram") -> None:
+        """Displays a logarithmic spectrogram of the audio signal."""
+        X = librosa.stft(signal)
+        Xdb = librosa.amplitude_to_db(abs(X))
+        plt.figure(figsize=(15, 5))
+        librosa.display.specshow(Xdb, sr=sr, x_axis="time", y_axis="log")
+        plt.colorbar()
+        plt.title(title)
+        self._save_and_display_plot(title)
+
+    def plot_mfcc(self, signal: np.array, sr: int = 22000, title: str = "MFCC", n_mfcc: int = 13) -> None:
+        """Visualizes the MFCC of the audio signal."""
+        mfccs = librosa.feature.mfcc(y=signal, sr=sr, n_mfcc=n_mfcc)
+        plt.figure(figsize=(15, 5))
+        librosa.display.specshow(mfccs, sr=sr, x_axis="time")
+        plt.colorbar()
+        plt.title(title)
+        self._save_and_display_plot(title)
+
+    def plot_psd(self, signal: np.array, sr: int = 22000, title: str = "Power Spectral Density") -> None:
+        """Plots the power spectral density of the audio signal."""
+        freqs, psd = welch(signal, fs=sr)
+        plt.figure(figsize=(15, 5))
+        plt.semilogy(freqs, psd)
+        plt.title(title)
+        plt.xlabel("Frequency")
+        plt.ylabel("Power")
+        self._save_and_display_plot(title)
