@@ -1,6 +1,7 @@
 import librosa
 import numpy as np
 from typing import Optional, List
+from inspect import signature
 
 
 class AudioPreprocessor:
@@ -57,14 +58,11 @@ class AudioPreprocessor:
         return np.concatenate(voiced_signal, axis=0)
 
     @staticmethod
-    def source_separation(audio_chunk: np.array, sr: int = 22050, n_components: int = 2) -> np.array:
-        """Separates the main audio source using Non-negative Matrix Factorization."""
-        S = librosa.feature.melspectrogram(y=audio_chunk, sr=sr)
-        comps, acts = librosa.decompose.decompose(S, n_components=n_components, sort=True)
-        main_audio_index = np.argmax(np.sum(comps, axis=1))
-        main_audio_spec = comps[main_audio_index] @ acts
-        main_audio = librosa.feature.inverse.mel_to_audio(main_audio_spec, sr=sr)
-        return main_audio
+    def source_separation(audio_chunk: np.array, sr: int = 22050) -> np.array:
+        """Separates the harmonic component using Harmonic/Percussive source separation."""
+        # Separate harmonic and percussive components
+        harmonic, _ = librosa.effects.hpss(audio_chunk)
+        return harmonic
 
     @staticmethod
     def spectral_masking(audio_chunk: np.array, reference_audio: np.array) -> np.array:
@@ -118,10 +116,13 @@ class AudioPreprocessor:
         }
         for step in pipeline:
             if step in processing_map:
-                if step == "adaptive_noise_reduction":
-                    audio = processing_map[step](audio, reference_audio=kwargs.get("reference_audio"))
-                else:
-                    audio = processing_map[step](audio)
+                func = processing_map[step]
+
+                # Filter kwargs based on the function's signature
+                sig = signature(func)
+                filtered_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
+
+                audio = func(audio, **filtered_kwargs)
             else:
                 raise ValueError(f"Unknown preprocessing step: {step}")
         return audio

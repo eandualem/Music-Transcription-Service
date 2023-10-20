@@ -8,7 +8,9 @@ from scipy.signal import welch
 import IPython.display as ipd
 import matplotlib.pyplot as plt
 from IPython.display import display, Image, Audio, HTML
-
+import io
+import contextlib
+import base64
 
 class AudioVis:
     """Class for audio visualizations."""
@@ -82,3 +84,14 @@ class AudioVis:
         plt.xlabel("Frequency")
         plt.ylabel("Power")
         self._save_and_display_plot(title)
+
+    def display_collapsible(self, debug_info, title="Debugging Information"):
+        """Displays a collapsible/expandable section in Jupyter Notebook."""
+        # Create the collapsible section with a button
+        collapsible_html = f"""
+        <details>
+            <summary>{title}</summary>
+            {'<br>'.join(debug_info)}
+        </details>
+        """
+        display(HTML(collapsible_html))
