@@ -12,3 +12,4 @@
 **/*.pyo
 **/*.egg-info
 *.pem
+**/data

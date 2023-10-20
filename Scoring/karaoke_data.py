@@ -1,4 +1,3 @@
-import re
 import librosa
 import logging
 import numpy as np
@@ -11,7 +10,6 @@ class KaraokeData:
 
     # Constants for alignment methods
     ALIGNMENT_METHODS = {
-        "cross_correlation": "_align_cross_correlation",
         "onset_detection": "_align_onset_detection",
         "lyrics_data": "_align_lyrics_data",
         "start": "_align_start",
@@ -74,7 +72,7 @@ class KaraokeData:
         if method not in self.ALIGNMENT_METHODS:
             raise ValueError(f"Invalid alignment method. Available methods: {list(self.ALIGNMENT_METHODS.keys())}")
         alignment_method = getattr(self, self.ALIGNMENT_METHODS[method])
-        alignment_method(audio_chunk)
+        return alignment_method(audio_chunk)
 
     def get_next_segment(self, audio_chunk_length: int) -> Tuple[np.array, np.array]:
         """
@@ -107,8 +105,9 @@ class KaraokeData:
             self.current_position = librosa.time_to_samples(start_time, sr=self.sampling_rate)
             self.initial_alignment_done = True
 
-    def _align_onset_detection(self, audio_chunk: np.array):
-        """Aligns the audio using onset detection."""
+    def _align_onset_detection(self, audio_chunk: np.array) -> int:
+        """Aligns the audio using onset detection and returns the onset position in the audio chunk."""
+        onset_position_in_chunk = 0
         if not self.initial_alignment_done:
             try:
                 original_onsets = librosa.onset.onset_detect(y=self.original_audio, sr=self.sampling_rate)
@@ -118,22 +117,13 @@ class KaraokeData:
                 if original_onset_samples.size > 0 and chunk_onset_samples.size > 0:
                     offset = original_onset_samples[0] - chunk_onset_samples[0]
                     self.current_position = max(0, offset)
+                    onset_position_in_chunk = chunk_onset_samples[0]
                 else:
                     self.current_position = 0
                 self.initial_alignment_done = True
             except Exception as e:
                 logging.error(f"Error in onset detection alignment: {e}")
-
-    def _align_cross_correlation(self, audio_chunk: np.array):
-        """Aligns the audio using cross-correlation."""
-        if not self.initial_alignment_done:
-            try:
-                cross_correlation = np.correlate(self.original_audio, audio_chunk, "valid")
-                start_sample = np.argmax(cross_correlation)
-                self.current_position = start_sample
-                self.initial_alignment_done = True
-            except Exception as e:
-                logging.error(f"Error in cross-correlation alignment: {e}")
+        return onset_position_in_chunk
 
     def reset_alignment(self):
         """Resets the alignment state."""

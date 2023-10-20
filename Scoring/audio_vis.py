@@ -2,11 +2,12 @@ import os
 import uuid
 import librosa
 import numpy as np
+import soundfile as sf
 import librosa.display
 from scipy.signal import welch
 import IPython.display as ipd
 import matplotlib.pyplot as plt
-from IPython.display import display, Image, Audio
+from IPython.display import display, Image, Audio, HTML
 
 
 class AudioVis:
@@ -21,16 +22,18 @@ class AudioVis:
     def play_audio(self, samples: np.array, sr: int = 22000) -> None:
         """Plays the provided audio samples."""
         audio_path = os.path.join(self.data_dir, f"{uuid.uuid4()}.wav")
-        librosa.output.write_wav(audio_path, samples, sr)
-        display(Audio(filename=audio_path))
+        sf.write(audio_path, samples, sr)
+        audio_link = f'<audio controls style="width: 100%"><source src="{audio_path}" type="audio/wav"></audio>'
+        display(HTML(audio_link))
 
     def _save_and_display_plot(self, title: str) -> None:
-        """Save the current plot as an image and display it."""
+        """Save the current plot as an image and display it using HTML."""
         img_path = os.path.join(self.data_dir, f"{uuid.uuid4()}.png")
         plt.tight_layout()
         plt.savefig(img_path)
         plt.close()
-        display(Image(filename=img_path))
+        img_link = f'<img src="{img_path}" alt="{title}" width="100%"/>'
+        display(HTML(img_link))
 
     def wav_plot(self, signal: np.array, sr: int = 22000, title: str = "Audio Signal") -> None:
         """Plots the waveform of the audio signal."""
