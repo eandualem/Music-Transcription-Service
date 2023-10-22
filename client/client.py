@@ -29,7 +29,7 @@ class Client:
         initialize_request = RequestBuilder.create_initialize_request(self.client_token)
 
         # Create AudioChunk requests
-        audio_files = ["part1.wav", "part2.wav", "part3.wav"]
+        audio_files = ["chunk0.wav", "chunk1.wav", "chunk2.wav", "chunk3.wav", "chunk4.wav"]
         audio_chunk_requests = [
             RequestBuilder.create_audio_chunk_request(self.read_audio_data_from_file(file)) for file in audio_files
         ]
