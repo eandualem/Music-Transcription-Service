@@ -2,36 +2,37 @@ from transcription_service import TranscriptionService
 from karaoke_data import KaraokeData
 from audio_scorer import AudioScorer
 from audio_preprocessor import AudioPreprocessor
-from typing import List, Dict, Union, Tuple, Callable
+from typing import List, Dict
 import numpy as np
 
 
 class Pipeline:
-    def __init__(self,
-                 original_audio: np.array,
-                 track_audio: np.array,
-                 raw_lyrics_data: str,
-                 sr: int,
-                 transcription_method:str,
-                 pipelines: Dict[str, Dict[str, List[str]]]):
-
+    def __init__(
+        self,
+        original_audio: np.array,
+        track_audio: np.array,
+        raw_lyrics_data: str,
+        sr: int,
+        transcription_method: str,
+        score_weights: Dict[str, float],
+        pipelines: Dict[str, Dict[str, List[str]]],
+    ):
         self.sr = sr
         self.pipelines = pipelines
+        self.score_weights = score_weights
 
         # Initialize components
         self.ap = AudioPreprocessor()
-        self.audio_scorer = AudioScorer(TranscriptionService(method=transcription_method), 'dtaidistance_fast')
+        self.audio_scorer = AudioScorer(TranscriptionService(method=transcription_method), "dtaidistance_fast")
         self.karaoke_data = self._initialize_karaoke_data(original_audio, track_audio, raw_lyrics_data, sr)
 
         # Track scores and chunks
         self._reset_scores()
         self.initialized = False
 
-    def _initialize_karaoke_data(self,
-                                 original_audio: np.array,
-                                 track_audio: np.array,
-                                 raw_lyrics_data: str,
-                                 sr: int) -> KaraokeData:
+    def _initialize_karaoke_data(
+        self, original_audio: np.array, track_audio: np.array, raw_lyrics_data: str, sr: int
+    ) -> KaraokeData:
         """Helper method to initialize the KaraokeData instance."""
         return KaraokeData(original_audio, track_audio, raw_lyrics_data, sr)
 
@@ -66,6 +67,7 @@ class Pipeline:
         processed_original_data = self._preprocess_audio(original_segment, "original", reference_audio=reference_audio)
 
         scores = self._compute_scores(processed_audio_chunk_data, processed_original_data)
+        score = self._calculate_weighted_score(scores)
         feedback = self._generate_feedback(scores)
 
         # Update cumulative scores and chunk count
@@ -73,25 +75,36 @@ class Pipeline:
             self.cumulative_scores[score_name] += score_value
         self.chunk_count += 1
 
-        return scores, feedback
+        average_score = self._calculate_weighted_score(self.cumulative_scores) / self.chunk_count
 
-    def _compute_scores(self,
-                        processed_audio_chunk_data: Dict[str, np.array],
-                        processed_original_data: Dict[str, np.array]) -> Dict[str, float]:
+        return score, average_score, feedback
+
+    def final_score(self):
+        average_score = self._calculate_weighted_score(self.cumulative_scores) / self.chunk_count
+        feedback = self._generate_feedback(self.cumulative_scores)
+        return average_score, feedback
+
+    def _compute_scores(
+        self, processed_audio_chunk_data: Dict[str, np.array], processed_original_data: Dict[str, np.array]
+    ) -> Dict[str, float]:
         """Compute scores for processed audio data."""
         return self.audio_scorer.process_audio_chunk(
-            processed_audio_chunk_data,
-            processed_original_data,
-            self.karaoke_data.get_lyrics(),
-            self.sr,
-            True
+            processed_audio_chunk_data, processed_original_data, self.karaoke_data.get_lyrics(), self.sr, True
         )
+
+    def _calculate_weighted_score(self, scores) -> float:
+        """Calculates the overall weighted score."""
+
+        weighted_score = 0.0
+        for score_type, score_value in scores.items():
+            weighted_score += score_value * self.score_weights.get(score_type)
+
+        return weighted_score
 
     def get_average_scores(self) -> Dict[str, float]:
         """Compute average scores based on processed audio chunks."""
         return {
-            score_name: score_value / self.chunk_count
-            for score_name, score_value in self.cumulative_scores.items()
+            score_name: score_value / self.chunk_count for score_name, score_value in self.cumulative_scores.items()
         }
 
     def _generate_feedback(self, scores: Dict[str, float]) -> str:
@@ -99,24 +112,24 @@ class Pipeline:
         feedback_messages = {
             "linguistic_accuracy_score": {
                 "low": "🎤 Oops! You might've missed some words or pronounced them differently. Keep practicing the lyrics! 📜",
-                "high": "🎤 Great job with the lyrics! You're nailing the words. 🎉"
+                "high": "🎤 Great job with the lyrics! You're nailing the words. 🎉",
             },
             "linguistic_similarity_score": {
                 "low": "🎤 Hmm, your phrasing seems a bit different from the original. Listen closely to the original singer's style and try to emulate it! 🎶",
-                "high": "🎤 You've captured the essence of the original singer's style! Keep it up! 🌟"
+                "high": "🎤 You've captured the essence of the original singer's style! Keep it up! 🌟",
             },
             "amplitude_score": {
                 "low": "🎤 Your volume seems a bit off. Try to match the song's intensity and dynamics! 📈",
-                "high": "🎤 Spot on with the volume! You're in tune with the song's dynamics. 🔊"
+                "high": "🎤 Spot on with the volume! You're in tune with the song's dynamics. 🔊",
             },
             "pitch_score": {
                 "low": "🎤 Some notes seem off-pitch. Remember, practice makes perfect! 🎵",
-                "high": "🎤 Your pitch is on point! That's some great ear you have there. 🎧"
+                "high": "🎤 Your pitch is on point! That's some great ear you have there. 🎧",
             },
             "rhythm_score": {
                 "low": "🎤 Oops, your timing seems a bit off. Keep practicing to the beat! 🥁",
-                "high": "🎤 You've got the rhythm! Great job staying in sync with the beat. 💃"
-            }
+                "high": "🎤 You've got the rhythm! Great job staying in sync with the beat. 💃",
+            },
         }
 
         # Identify the lowest score and its type

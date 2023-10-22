@@ -34,9 +34,7 @@ class GRPCRequestHandler:
         if client_token_container:
             client_token = TokenValidator.unpack_client_token(client_token_container)
 
-            initial_data = self.private_interface_client.fetch_initial_data(client_token)
-
-            self.audio_processor = AudioProcessor(client_token, initial_data)
+            self.audio_processor = AudioProcessor(client_token, self.private_interface_client)
             self.log.info("Processing audio chunk...")
 
             yield self.audio_processor.create_status_response(0)
@@ -48,4 +46,4 @@ class GRPCRequestHandler:
         yield self.audio_processor.process_audio_chunk(request)
 
     def handle_finalize_request(self, request, client_token):
-        yield self.report_generator.handle_finalize(request, client_token)
+        yield self.audio_processor.handle_finalize(request, client_token)
