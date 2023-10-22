@@ -13,3 +13,4 @@
 **/*.egg-info
 *.pem
 **/data
+**/proto/Generated
