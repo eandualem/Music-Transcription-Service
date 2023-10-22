@@ -6,9 +6,9 @@ from Declarations.Model.AIPrivateInterfaceService import FetchInitialData_pb2, R
 
 class AIPrivateInterfaceService(AIPrivateInterfaceService_pb2_grpc.AIPrivateInterfaceServiceServicer):
     logger = Logger.get_logger("AIPrivateInterfaceService")
-    LYRICS_DOWNLOAD_URL = "https://drive.google.com/file/d/1rK2mbvSZQXSqLsLmnIRxoU4_57GdKCer/view?usp=sharing"
-    TRACK_DOWNLOAD_URL = "https://drive.google.com/file/d/1_gKRaRqZ9OlelsjCdunHTzxYIz8Lv8dJ/view?usp=sharing"
-    VOICE_HELPER_DOWNLOAD_URL = "https://drive.google.com/file/d/1cD5fDv86R5z5dtR-J6AXpt0nIDZtplTX/view?usp=sharing"
+    LYRICS_DOWNLOAD_URL = "https://drive.google.com/file/d/18qLcH-0CtZofrM8rvgfZCFgQp0d9TvkW/view?usp=share_link"
+    TRACK_DOWNLOAD_URL = "https://drive.google.com/file/d/1174qyrYWvQbaHn2yu6Lgf9DK99R7vmii/view?usp=share_link"
+    VOICE_HELPER_DOWNLOAD_URL = "https://drive.google.com/file/d/1kkupK9VMs3ISqx9x8AHmN-189JwNdKyp/view?usp=sharing"
 
     def _handle_exception(self, e, context):
         """Centralized exception handling."""

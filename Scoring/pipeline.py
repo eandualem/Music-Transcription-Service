@@ -1,7 +1,6 @@
 from karaoke_data import KaraokeData
 from audio_scorer import AudioScorer
 from audio_preprocessor import AudioPreprocessor
-from google_speech import GoogleSpeechTranscription
 from typing import List, Dict, Union, Tuple, Callable
 import numpy as np
 
@@ -12,6 +11,7 @@ class Pipeline:
                  track_audio: np.array,
                  raw_lyrics_data: str,
                  sr: int,
+                 transcriber,
                  pipelines: Dict[str, Dict[str, List[str]]]):
 
         self.sr = sr
@@ -19,7 +19,7 @@ class Pipeline:
 
         # Initialize components
         self.ap = AudioPreprocessor()
-        self.audio_scorer = AudioScorer(GoogleSpeechTranscription(), 'dtaidistance_fast')
+        self.audio_scorer = AudioScorer(transcriber, 'dtaidistance_fast')
         self.karaoke_data = self._initialize_karaoke_data(original_audio, track_audio, raw_lyrics_data, sr)
 
         # Track scores and chunks
