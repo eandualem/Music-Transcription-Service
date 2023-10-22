@@ -21,6 +21,7 @@ class Config:
 
     def init_config(self):
         load_dotenv()
+        self.OPENAI_API_KEY = self._get_env_variable("OPENAI_API_KEY")
         self.GRPC_SERVER_PORT = int(self._get_env_variable("GRPC_SERVER_PORT"))
         self.GRPC_SERVER_CERT_FILE = self._get_env_variable("GRPC_SERVER_CERT_FILE")
         self.GRPC_SERVER_KEY_FILE = self._get_env_variable("GRPC_SERVER_KEY_FILE")

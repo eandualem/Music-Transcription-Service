@@ -1,17 +1,9 @@
-import librosa
 import logging
+import librosa
 import numpy as np
-from typing import Callable, Dict
 from dtw_helper import DTWHelper
+from typing import Callable, Dict
 from Levenshtein import distance as levenshtein_distance
-from audio_vis import AudioVis
-from IPython.display import display, Markdown
-import matplotlib.pyplot as plt
-from IPython.display import set_matplotlib_formats
-import io
-import contextlib
-import base64
-set_matplotlib_formats('png')
 
 
 class AudioScorer:
@@ -20,8 +12,6 @@ class AudioScorer:
     def __init__(self, transcriber: Callable, dtw_method: str = "fastdtw"):
         self.transcriber = transcriber
         self.dtw_helper = DTWHelper(method=dtw_method)
-        self.av = AudioVis('../data/temp')
-        self.lyrics = None # temp variable to store lyrics
 
         self.scoring_functions = {
             "linguistic_accuracy_score": self.linguistic_accuracy_score,
@@ -43,10 +33,6 @@ class AudioScorer:
         actual_lyrics = kwargs.get('actual_lyrics')
         from_file = kwargs.get('from_file', True)
 
-# ---------------------------------- Debugging ----------------------------------
-        self.lyrics = actual_lyrics
-# ---------------------------------- Debugging ----------------------------------
-
         try:
             user_transcription = self.transcriber.transcribe(user_audio, sr, from_file=from_file)
             return self._levenshtein_similarity(user_transcription, actual_lyrics)
@@ -60,52 +46,7 @@ class AudioScorer:
         from_file = kwargs.get('from_file', False)
         user_transcription = self.transcriber.transcribe(user_audio, sr, from_file=from_file)
         original_transcription = self.transcriber.transcribe(reference_audio, sr, from_file=from_file)
-
-            # Function to generate debugging output
-        def generate_debug_output(self):
-            """Generate debugging information."""
-            debug_info = []
-            debug_info.append(f"🎙️ lyrics:\n{self.lyrics}")
-            debug_info.append(f"🎙️ User Transcription:\n{user_transcription}")
-            debug_info.append(f"\n🎤 Original Transcription:\n{original_transcription}\n")
-
-            # Visual Plots with Emojis
-            plot_functions = [
-                ("Waveform 🌊", self.av.wav_plot),
-                ("Spectrogram 🌈", self.av.plot_spectrogram),
-                ("Log Spectrogram 🔥", self.av.plot_log_spectrogram),
-                ("MFCC 📊", self.av.plot_mfcc),
-                ("Power Spectral Density ⚡", self.av.plot_psd)
-            ]
-
-            for title, plot_func in plot_functions:
-                fig = plt.figure()
-                plot_func(reference_audio, sr, title=f"Original Audio - {title}")
-
-                buffer = io.BytesIO()
-                fig.savefig(buffer, format='png')
-                buffer.seek(0)
-                encoded_image = base64.b64encode(buffer.read()).decode('utf-8')
-                debug_info.append(f'<img src="data:image/png;base64,{encoded_image}"/>')
-                plt.close(fig)
-
-                fig = plt.figure()
-                plot_func(user_audio, sr, title=f"User Audio - {title}")
-
-                buffer = io.BytesIO()
-                fig.savefig(buffer, format='png')
-                buffer.seek(0)
-                encoded_image = base64.b64encode(buffer.read()).decode('utf-8')
-                debug_info.append(f'<img src="data:image/png;base64,{encoded_image}"/>')
-                plt.close(fig)
-
-            return debug_info
-
-
-        # Collapsible debugging section
-        self.av.display_collapsible(generate_debug_output(self))
         return self._levenshtein_similarity(user_transcription, original_transcription)
-
 
     def compute_dtw_score(self, user_audio_features: np.ndarray, reference_audio_features: np.ndarray) -> float:
         """DTW score between user and reference audio features."""

@@ -1,10 +1,7 @@
 from logger import Logger
 from google.protobuf.duration_pb2 import Duration
 from Declarations.Model.AIProcessingService import AIProcessingResponse_pb2
-from google_speech_transcription import GoogleSpeechTranscription
 from audio_loader import AudioLoader
-from audio_scorer import AudioScorer
-from audio_utils import AudioUtils
 import numpy as np
 import librosa
 
@@ -12,7 +9,6 @@ class AudioProcessor:
     def __init__(self, client_token, initial_data):
         self.client_token = client_token
         self.log = Logger.get_logger(__name__)
-        self.google_speech_transcriber = GoogleSpeechTranscription()
 
         # Initialize modular components
         self.audio_loader = AudioLoader(initial_data.lyrics_download_url, initial_data.track_download_url, initial_data.voice_helper_download_url)

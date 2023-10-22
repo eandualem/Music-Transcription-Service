@@ -5,12 +5,8 @@ import numpy as np
 import soundfile as sf
 import librosa.display
 from scipy.signal import welch
-import IPython.display as ipd
 import matplotlib.pyplot as plt
-from IPython.display import display, Image, Audio, HTML
-import io
-import contextlib
-import base64
+from IPython.display import display, HTML
 
 class AudioVis:
     """Class for audio visualizations."""
