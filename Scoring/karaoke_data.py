@@ -51,11 +51,12 @@ class KaraokeData:
         transformed_lyrics += word.strip()
         return transformed_lyrics
 
-    def _parse_lyrics(self, raw_lyrics: str) -> List[Dict[str, Union[float, str]]]:
+    def _parse_lyrics(self, raw_lyrics: pd.DataFrame) -> List[Dict[str, Union[float, str]]]:
         """Converts raw CSV lyrics into a structured format."""
         try:
             # Load the CSV data
-            csv_data = pd.read_csv(raw_lyrics)
+            # csv_data = pd.read_csv(raw_lyrics)
+            csv_data = raw_lyrics
             csv_data = csv_data[csv_data["payload_type"] == 1]
             parsed_lyrics = [
                 {"time": row["start_time"], "lyrics": row["payload"].strip()} for _, row in csv_data.iterrows()

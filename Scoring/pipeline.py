@@ -1,9 +1,10 @@
-from transcription_service import TranscriptionService
-from karaoke_data import KaraokeData
-from audio_scorer import AudioScorer
-from audio_preprocessor import AudioPreprocessor
+from Scoring.transcription_service import TranscriptionService
+from Scoring.karaoke_data import KaraokeData
+from Scoring.audio_scorer import AudioScorer
+from Scoring.audio_preprocessor import AudioPreprocessor
 from typing import List, Dict
 import numpy as np
+import logging
 
 
 class Pipeline:
@@ -16,14 +17,18 @@ class Pipeline:
         transcription_method: str,
         score_weights: Dict[str, float],
         pipelines: Dict[str, Dict[str, List[str]]],
+        config,
     ):
         self.sr = sr
+        self.config = config
         self.pipelines = pipelines
         self.score_weights = score_weights
 
         # Initialize components
         self.ap = AudioPreprocessor()
-        self.audio_scorer = AudioScorer(TranscriptionService(method=transcription_method), "dtaidistance_fast")
+        self.audio_scorer = AudioScorer(
+            TranscriptionService(method=transcription_method, config=config), "dtaidistance_fast"
+        )
         self.karaoke_data = self._initialize_karaoke_data(original_audio, track_audio, raw_lyrics_data, sr)
 
         # Track scores and chunks
@@ -54,13 +59,40 @@ class Pipeline:
             for score_name, pipeline in self.pipelines.items()
         }
 
+    def _convert_to_numpy_array(self, audio_chunk, to_float=False):
+        dtype = np.int16  # initial dtype, adapt as needed
+
+        # Convert to numpy array
+        audio_array = np.frombuffer(audio_chunk, dtype=dtype)
+
+        # Convert to floating-point for librosa, if requested
+        if to_float:
+            audio_array = audio_array.astype(np.float32)
+            # Normalize if necessary
+            if np.max(np.abs(audio_array)) > 1:
+                audio_array = audio_array / np.iinfo(np.int16).max
+
+        return audio_array
+
     def process_and_score(self, audio_chunk: np.array) -> Dict[str, float]:
         """Process and score a single audio chunk."""
         if not self.initialized:
             self.karaoke_data.align_audio(audio_chunk, method="start")
             self.initialized = True
 
+        if not isinstance(audio_chunk, np.ndarray):
+            audio_chunk = self._convert_to_numpy_array(audio_chunk, True)
+
+        # Check for non-finite values
+        if not np.all(np.isfinite(audio_chunk)):
+            logging.error("Audio chunk contains non-finite values!")
+            audio_chunk = np.nan_to_num(audio_chunk)
+            # Handle accordingly, maybe raise an exception or return
+
         original_segment, reference_audio = self.karaoke_data.get_next_segment(len(audio_chunk))
+
+        original_segment = self._convert_to_numpy_array(original_segment, True)
+        reference_audio = self._convert_to_numpy_array(reference_audio, True)
 
         # Process audio data
         processed_audio_chunk_data = self._preprocess_audio(audio_chunk, "chunk", reference_audio=reference_audio)
@@ -88,8 +120,9 @@ class Pipeline:
         self, processed_audio_chunk_data: Dict[str, np.array], processed_original_data: Dict[str, np.array]
     ) -> Dict[str, float]:
         """Compute scores for processed audio data."""
+        logging.info(f"\n\n{self.karaoke_data.get_lyrics()}")
         return self.audio_scorer.process_audio_chunk(
-            processed_audio_chunk_data, processed_original_data, self.karaoke_data.get_lyrics(), self.sr, True
+            processed_audio_chunk_data, processed_original_data, self.karaoke_data.get_lyrics(), self.sr, False
         )
 
     def _calculate_weighted_score(self, scores) -> float:

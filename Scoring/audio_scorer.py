@@ -1,7 +1,7 @@
 import logging
 import librosa
 import numpy as np
-from dtw_helper import DTWHelper
+from Scoring.dtw_helper import DTWHelper
 from typing import Callable, Dict
 from Levenshtein import distance as levenshtein_distance
 
@@ -29,9 +29,9 @@ class AudioScorer:
 
     def linguistic_accuracy_score(self, user_audio: np.ndarray, **kwargs) -> float:
         """Linguistic accuracy based on transcribed text."""
-        sr = kwargs.get('sr')
-        actual_lyrics = kwargs.get('actual_lyrics')
-        from_file = kwargs.get('from_file', True)
+        sr = kwargs.get("sr")
+        actual_lyrics = kwargs.get("actual_lyrics")
+        from_file = kwargs.get("from_file", False)
 
         try:
             user_transcription = self.transcriber.transcribe(user_audio, sr, from_file=from_file)
@@ -40,10 +40,13 @@ class AudioScorer:
             logging.error(f"Linguistic accuracy computation failed: {e}")
             return 0.0
 
-    def linguistic_similarity_with_original(self, user_audio: np.ndarray, reference_audio: np.ndarray, **kwargs) -> float:
+    def linguistic_similarity_with_original(
+        self, user_audio: np.ndarray, reference_audio: np.ndarray, **kwargs
+    ) -> float:
         """Compute linguistic similarity with the original singer's transcription."""
-        sr = kwargs.get('sr')
-        from_file = kwargs.get('from_file', False)
+        sr = kwargs.get("sr")
+        from_file = kwargs.get("from_file", False)
+
         user_transcription = self.transcriber.transcribe(user_audio, sr, from_file=from_file)
         original_transcription = self.transcriber.transcribe(reference_audio, sr, from_file=from_file)
         return self._levenshtein_similarity(user_transcription, original_transcription)
@@ -54,8 +57,8 @@ class AudioScorer:
 
     def amplitude_matching_score(self, user_audio: np.ndarray, reference_audio: np.ndarray, **kwargs) -> float:
         """Amplitude matching score."""
-        sr = kwargs.get('sr')
-        new_sample_rate = sr // 8
+        sr = kwargs.get("sr")
+        new_sample_rate = sr // 16
         user_audio_downsampled = librosa.resample(user_audio, orig_sr=sr, target_sr=new_sample_rate)
         reference_audio_downsampled = librosa.resample(reference_audio, orig_sr=sr, target_sr=new_sample_rate)
         return self.compute_dtw_score(user_audio_downsampled.flatten(), reference_audio_downsampled.flatten())
@@ -82,18 +85,19 @@ class AudioScorer:
         processed_original_data: Dict[str, np.ndarray],
         actual_lyrics: str,
         sr: int,
-        from_file: bool = False
+        from_file: bool = False,
     ) -> Dict[str, float]:
         """Compute scores for an audio chunk."""
         scores = {}
         for score_name, scoring_function in self.scoring_functions.items():
             kwargs = {
-                'sr': sr,
-                'actual_lyrics': actual_lyrics,
-                'reference_audio': processed_original_data[score_name],
-                'from_file': from_file
+                "sr": sr,
+                "actual_lyrics": actual_lyrics,
+                "reference_audio": processed_original_data[score_name],
+                "from_file": from_file,
             }
+
             user_audio = processed_audio_chunk_data[score_name]
             scores[score_name] = scoring_function(user_audio, **kwargs)
-        print(f"Scores: {scores}")
+            logging.info(f"\n\n{score_name} {scores}")
         return scores
