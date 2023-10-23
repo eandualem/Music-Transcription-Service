@@ -5,6 +5,7 @@ from Declarations.Model.Report_pb2 import Report
 from google.protobuf.duration_pb2 import Duration
 from data_loader import DataLoader
 from Declarations.Model.AIProcessingService import AIProcessingResponse_pb2
+from datetime import datetime
 
 
 class AudioProcessor:
@@ -34,6 +35,7 @@ class AudioProcessor:
         # To keep track of the total processed audio duration
         self.processed_duration = 0
         self.chunk_scores = []
+        self.start_time = datetime.now()
 
     def create_status_response(self, status_code):
         """Creates an AI processing response containing only a status code.
@@ -94,9 +96,10 @@ class AudioProcessor:
             AIProcessingResponse: The constructed response containing the generated report.
         """
         self.log.info(f"Handling Finalize request with reason: {request.finalize.finalize_reason}")
+        end_time = datetime.now()
         average_score, feedback = self.pipeline.final_score()
 
-        report = self._create_report_feedback(average_score, feedback, 20, 20, 2.9)
+        report = self._create_report_feedback(average_score, feedback, int(self.start_time.timestamp()), int(end_time.timestamp()), average_score)
         self.private_interface_client.report_processing_result(report, self.client_token)
         return AIProcessingResponse_pb2.AIProcessingResponse(report=report)
 

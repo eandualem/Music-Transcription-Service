@@ -27,7 +27,7 @@ class Pipeline:
         # Initialize components
         self.ap = AudioPreprocessor()
         self.audio_scorer = AudioScorer(
-            TranscriptionService(method=transcription_method, config=config), "dtaidistance_fast"
+            TranscriptionService(method=transcription_method, config=config), config, "dtaidistance_fast"
         )
         self.karaoke_data = self._initialize_karaoke_data(original_audio, track_audio, raw_lyrics_data, sr)
 

@@ -10,10 +10,9 @@ import logging
 class AudioScorer:
     """Computes various audio scores."""
 
-    def __init__(self, transcriber: Callable, dtw_method: str = "fastdtw"):
+    def __init__(self, transcriber: Callable, config, dtw_method: str = "fastdtw"):
         self.transcriber = transcriber
         self.dtw_helper = DTWHelper(method=dtw_method)
-
         self.scoring_functions = {
             "linguistic_accuracy_score": self.linguistic_accuracy_score,
             "linguistic_similarity_score": self.linguistic_similarity_with_original,
@@ -21,6 +20,7 @@ class AudioScorer:
             "pitch_score": self.pitch_matching_score,
             "rhythm_score": self.rhythm_score,
         }
+        self.user_transcription = ""  # temp variable not to transcribe twice
 
     @staticmethod
     def _levenshtein_similarity(text1: str, text2: str) -> float:
@@ -36,6 +36,7 @@ class AudioScorer:
 
         try:
             user_transcription = self.transcriber.transcribe(user_audio, sr, from_file=from_file)
+            self.user_transcription = user_transcription
             return self._levenshtein_similarity(user_transcription, actual_lyrics)
         except Exception as e:
             logging.error(f"Linguistic accuracy computation failed: {e}")
@@ -48,7 +49,7 @@ class AudioScorer:
         sr = kwargs.get("sr")
         from_file = kwargs.get("from_file", False)
 
-        user_transcription = self.transcriber.transcribe(user_audio, sr, from_file=from_file)
+        user_transcription = self.user_transcription
         original_transcription = self.transcriber.transcribe(reference_audio, sr, from_file=from_file)
         return self._levenshtein_similarity(user_transcription, original_transcription)
 
@@ -56,19 +57,31 @@ class AudioScorer:
         """DTW score between user and reference audio features."""
         return self.dtw_helper.compute_similarity(user_audio_features, reference_audio_features)
 
+    @staticmethod
+    def _resample_audio(audio: np.ndarray, original_sample_rate: int, target_sample_rate: int) -> np.ndarray:
+        """Resample audio to the target sample rate."""
+        return librosa.resample(audio, orig_sr=original_sample_rate, target_sr=target_sample_rate)
+
     def amplitude_matching_score(self, user_audio: np.ndarray, reference_audio: np.ndarray, **kwargs) -> float:
         """Amplitude matching score."""
+
         sr = kwargs.get("sr")
-        new_sample_rate = sr // 16
-        user_audio_downsampled = librosa.resample(user_audio, orig_sr=sr, target_sr=new_sample_rate)
-        reference_audio_downsampled = librosa.resample(reference_audio, orig_sr=sr, target_sr=new_sample_rate)
+        user_audio_downsampled = self._resample_audio(user_audio, sr, sr // 16)
+        reference_audio_downsampled = self._resample_audio(reference_audio, sr, sr // 16)
+
         return self.compute_dtw_score(user_audio_downsampled.flatten(), reference_audio_downsampled.flatten())
 
     def pitch_matching_score(self, user_audio: np.ndarray, reference_audio: np.ndarray, **kwargs) -> float:
         """Pitch matching score."""
-        user_pitch, _, _ = librosa.pyin(user_audio, fmin=librosa.note_to_hz("C2"), fmax=librosa.note_to_hz("C7"))
+        sr = kwargs.get("sr")
+        user_audio_resampled = self._resample_audio(user_audio, sr, sr // 16)
+        reference_audio_resampled = self._resample_audio(reference_audio, sr, sr // 16)
+
+        user_pitch, _, _ = librosa.pyin(
+            user_audio_resampled, fmin=librosa.note_to_hz("C2"), fmax=librosa.note_to_hz("C7")
+        )
         reference_pitch, _, _ = librosa.pyin(
-            reference_audio, fmin=librosa.note_to_hz("C2"), fmax=librosa.note_to_hz("C7")
+            reference_audio_resampled, fmin=librosa.note_to_hz("C2"), fmax=librosa.note_to_hz("C7")
         )
         user_pitch = user_pitch[~np.isnan(user_pitch)]
         reference_pitch = reference_pitch[~np.isnan(reference_pitch)]
@@ -76,8 +89,12 @@ class AudioScorer:
 
     def rhythm_score(self, user_audio: np.ndarray, reference_audio: np.ndarray, **kwargs) -> float:
         """Rhythm score."""
-        user_onset_env = librosa.onset.onset_strength(y=user_audio)
-        reference_onset_env = librosa.onset.onset_strength(y=reference_audio)
+        sr = kwargs.get("sr")
+        user_audio_resampled = self._resample_audio(user_audio, sr, sr // 16)
+        reference_audio_resampled = self._resample_audio(reference_audio, sr, sr // 16)
+
+        user_onset_env = librosa.onset.onset_strength(y=user_audio_resampled)
+        reference_onset_env = librosa.onset.onset_strength(y=reference_audio_resampled)
         return self.compute_dtw_score(user_onset_env, reference_onset_env)
 
     def process_audio_chunk(
