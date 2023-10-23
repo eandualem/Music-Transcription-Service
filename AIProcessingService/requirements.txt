@@ -10,3 +10,4 @@ matplotlib
 pandas
 scipy
 Levenshtein
+openai

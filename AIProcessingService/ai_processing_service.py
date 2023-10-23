@@ -28,7 +28,7 @@ class AIProcessingService(AIProcessingService_pb2_grpc.AIProcessingServiceServic
                 elif payload_type == "audio_chunk":
                     yield from self.request_handler.handle_audio_chunk_request(request)
                 elif payload_type == "finalize":
-                    yield from self.request_handler.handle_finalize_request(request, authorization_token)
+                    yield from self.request_handler.handle_finalize_request(request)
                 else:
                     raise ValueError("Invalid Request Type")
             except ValueError as e:

@@ -2,7 +2,6 @@ import grpc
 from logger import Logger
 from token_validator import TokenValidator
 from audio_processor import AudioProcessor
-from report_generator import ReportGenerator
 from error_response import ErrorResponse
 
 
@@ -11,7 +10,6 @@ class GRPCRequestHandler:
         self.log = Logger.get_logger(__name__)
         self.audio_processor = None
         self.private_interface_client = private_interface_client
-        self.report_generator = ReportGenerator(private_interface_client)
 
     def handle_initialize_request(self, request):
         """Handles an initialization request and performs necessary actions.
@@ -45,5 +43,5 @@ class GRPCRequestHandler:
     def handle_audio_chunk_request(self, request):
         yield self.audio_processor.process_audio_chunk(request)
 
-    def handle_finalize_request(self, request, client_token):
-        yield self.audio_processor.handle_finalize(request, client_token)
+    def handle_finalize_request(self, request):
+        yield self.audio_processor.handle_finalize(request)

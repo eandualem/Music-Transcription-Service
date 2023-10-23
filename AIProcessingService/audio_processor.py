@@ -1,9 +1,9 @@
-import librosa
+from config import Config
 from logger import Logger
 from Scoring.pipeline import Pipeline
 from Declarations.Model.Report_pb2 import Report
 from google.protobuf.duration_pb2 import Duration
-from AIProcessingService.data_loader import DataLoader
+from data_loader import DataLoader
 from Declarations.Model.AIProcessingService import AIProcessingResponse_pb2
 
 score_weights = {
@@ -49,6 +49,7 @@ class AudioProcessor:
             transcription_method="whisper",
             score_weights=score_weights,
             pipelines=pipelines,
+            config=Config(),
         )
 
         # To keep track of the total processed audio duration
@@ -74,11 +75,13 @@ class AudioProcessor:
         self.log.debug(f"Received audio chunk of length {len(user_audio_chunk)}")
         score, average_score, feedback = self.pipeline.process_and_score(user_audio_chunk)
 
+        self.log.info(f"\nHandling Finalize request with reason: {score}")
+        self.log.info(f"Handling Finalize request with reason: {feedback}")
+
         # Construct the response and return
-        response = self._create_processing_response(
-            score, average_score, len(user_audio_chunk) / librosa.get_samplerate(request.audio_chunk.audio_data)
-        )
-        response.feedback = feedback
+        response = self._create_processing_response(score, average_score, int(len(user_audio_chunk) / 44100))
+
+        # response.feedback = feedback
         return response
 
     def _create_processing_response(self, instant_score, average_score, seconds):
