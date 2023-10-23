@@ -23,7 +23,7 @@ class Pipeline:
         self.config = config
         self.pipelines = pipelines
         self.score_weights = score_weights
-
+        self.config = config
         # Initialize components
         self.ap = AudioPreprocessor()
         self.audio_scorer = AudioScorer(
@@ -142,28 +142,6 @@ class Pipeline:
 
     def _generate_feedback(self, scores: Dict[str, float]) -> str:
         """Generate feedback based on the given scores."""
-        feedback_messages = {
-            "linguistic_accuracy_score": {
-                "low": "🎤 Oops! You might've missed some words or pronounced them differently. Keep practicing the lyrics! 📜",
-                "high": "🎤 Great job with the lyrics! You're nailing the words. 🎉",
-            },
-            "linguistic_similarity_score": {
-                "low": "🎤 Hmm, your phrasing seems a bit different from the original. Listen closely to the original singer's style and try to emulate it! 🎶",
-                "high": "🎤 You've captured the essence of the original singer's style! Keep it up! 🌟",
-            },
-            "amplitude_score": {
-                "low": "🎤 Your volume seems a bit off. Try to match the song's intensity and dynamics! 📈",
-                "high": "🎤 Spot on with the volume! You're in tune with the song's dynamics. 🔊",
-            },
-            "pitch_score": {
-                "low": "🎤 Some notes seem off-pitch. Remember, practice makes perfect! 🎵",
-                "high": "🎤 Your pitch is on point! That's some great ear you have there. 🎧",
-            },
-            "rhythm_score": {
-                "low": "🎤 Oops, your timing seems a bit off. Keep practicing to the beat! 🥁",
-                "high": "🎤 You've got the rhythm! Great job staying in sync with the beat. 💃",
-            },
-        }
 
         # Identify the lowest score and its type
         lowest_score_type = min(scores, key=scores.get)
@@ -171,8 +149,8 @@ class Pipeline:
 
         # Provide feedback based on the lowest score if it's less than 0.8
         if lowest_score < 0.8:
-            return feedback_messages[lowest_score_type]["low"]
+            return self.config.FEEDBACK_MESSAGES[lowest_score_type]["low"]
         else:
             # If all scores are above 0.8, provide "high" feedback for the highest score
             highest_score_type = max(scores, key=scores.get)
-            return feedback_messages[highest_score_type]["high"]
+            return self.config.FEEDBACK_MESSAGES[highest_score_type]["high"]

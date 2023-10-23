@@ -1,0 +1,53 @@
+# config.yaml
+
+# Weights for various scoring metrics
+ScoreWeights:
+  linguistic_accuracy_score: 0.2
+  linguistic_similarity_score: 0.2
+  amplitude_score: 0.2
+  pitch_score: 0.2
+  rhythm_score: 0.2
+
+# Functions responsible for each scoring metric
+ScoringFunctions:
+  linguistic_accuracy_score: "linguistic_accuracy_score_function"
+  linguistic_similarity_score: "linguistic_similarity_score_function"
+  amplitude_score: "amplitude_score_function"
+  pitch_score: "pitch_score_function"
+  rhythm_score: "rhythm_score_function"
+
+# Preprocessing pipeline steps for each scoring metric
+PreprocessingPipeline:
+  linguistic_accuracy_score:
+    chunk: []
+    original: []
+  linguistic_similarity_score:
+    chunk: []
+    original: []
+  amplitude_score:
+    chunk: []
+    original: []
+  pitch_score:
+    chunk: ["adaptive_noise_reduction", "spectral_gate", "normalize"]
+    original: ["spectral_gate", "normalize"]
+  rhythm_score:
+    chunk: ["adaptive_noise_reduction", "spectral_gate", "normalize"]
+    original: ["spectral_gate", "normalize"]
+
+# Feedback messages for each scoring metric
+FeedbackMessages:
+  linguistic_accuracy_score:
+    low: "🎤 Oops! You might've missed some words or pronounced them differently. Keep practicing the lyrics! 📜"
+    high: "🎤 Great job with the lyrics! You're nailing the words. 🎉"
+  linguistic_similarity_score:
+    low: "🎤 Hmm, your phrasing seems a bit different from the original. Listen closely to the original singer's style and try to emulate it! 🎶"
+    high: "🎤 You've captured the essence of the original singer's style! Keep it up! 🌟"
+  amplitude_score:
+    low: "🎤 Your volume seems a bit off. Try to match the song's intensity and dynamics! 📈"
+    high: "🎤 Spot on with the volume! You're in tune with the song's dynamics. 🔊"
+  pitch_score:
+    low: "🎤 Some notes seem off-pitch. Remember, practice makes perfect! 🎵"
+    high: "🎤 Your pitch is on point! That's some great ear you have there. 🎧"
+  rhythm_score:
+    low: "🎤 Oops, your timing seems a bit off. Keep practicing to the beat! 🥁"
+    high: "🎤 You've got the rhythm! Great job staying in sync with the beat. 💃"

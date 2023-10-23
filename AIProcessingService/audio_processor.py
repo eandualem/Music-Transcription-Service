@@ -6,28 +6,6 @@ from google.protobuf.duration_pb2 import Duration
 from data_loader import DataLoader
 from Declarations.Model.AIProcessingService import AIProcessingResponse_pb2
 
-score_weights = {
-    "linguistic_accuracy_score": 0.2,
-    "linguistic_similarity_score": 0.2,
-    "amplitude_score": 0.2,
-    "pitch_score": 0.2,
-    "rhythm_score": 0.2,
-}
-
-pipelines = {
-    "linguistic_accuracy_score": {"chunk": [], "original": []},
-    "linguistic_similarity_score": {"chunk": [], "original": []},
-    "amplitude_score": {"chunk": [], "original": []},
-    "pitch_score": {
-        "chunk": ["adaptive_noise_reduction", "spectral_gate", "normalize"],
-        "original": ["spectral_gate", "normalize"],
-    },
-    "rhythm_score": {
-        "chunk": ["adaptive_noise_reduction", "spectral_gate", "normalize"],
-        "original": ["spectral_gate", "normalize"],
-    },
-}
-
 
 class AudioProcessor:
     def __init__(self, client_token, private_interface_client):
@@ -35,6 +13,7 @@ class AudioProcessor:
         self.log = Logger.get_logger(__name__)
         self.private_interface_client = private_interface_client
         initial_data = self.private_interface_client.fetch_initial_data(self.client_token)
+        self.config = Config()
 
         # Initialize modular components
         data_loader = DataLoader(
@@ -47,8 +26,8 @@ class AudioProcessor:
             raw_lyrics_data=lyrics_data,
             sr=44100,
             transcription_method="whisper",
-            score_weights=score_weights,
-            pipelines=pipelines,
+            score_weights=self.config.SCORE_WEIGHTS,
+            pipelines=self.config.PREPROCESSING_PIPELINE,
             config=Config(),
         )
 
