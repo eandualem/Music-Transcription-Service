@@ -170,7 +170,3 @@ docker-compose up aiprocessing-service
 ## License 📄
 
 (TBD)
-
----
-
-This version eliminates redundancy, organizes the content chronologically, and adds a Usage section. Feel free to make further adjustments as needed.
