@@ -11,23 +11,20 @@ from google.cloud import speech_v1 as speech
 
 logging.basicConfig(level=logging.INFO)
 
+
 class Transcription:
     def transcribe(self, audio_data: np.ndarray, sr: int, from_file: bool = False) -> str:
         raise NotImplementedError
 
+
 class GoogleSpeechTranscription(Transcription):
     def __init__(self):
-        client_file = "sa_speech_test.json"
+        client_file = "./Scoring/sa_speech_test.json"
         credentials = service_account.Credentials.from_service_account_file(client_file)
         self.client = speech.SpeechClient(credentials=credentials)
 
     def transcribe(self, audio_data: np.ndarray, sr: int, from_file: bool = False) -> str:
-        if not from_file:
-            audio_bytes_io = io.BytesIO(audio_data)
-            audio_array, sr = librosa.load(audio_bytes_io, sr=None)
-            audio_content = np.int16(audio_array * 32767).tobytes()
-        else:
-            audio_content = np.int16(audio_data * 32767).tobytes()
+        audio_content = np.int16(audio_data * 32767).tobytes()
 
         # Prepare the audio and config objects for the API request
         audio = speech.RecognitionAudio(content=audio_content)
@@ -51,12 +48,14 @@ class GoogleSpeechTranscription(Transcription):
             logging.error(f"Error transcribing audio: {e}")
             return ""
 
+
 class WhisperSpeechTranscription(Transcription):
-    def __init__(self):
-        openai.api_key = ''
+    def __init__(self, api_key):
+        logging.info(f"\n\n--------------------------{api_key}---------------------------------")
+        openai.api_key = api_key
 
     def transcribe(self, audio_data: np.ndarray, sr: int, from_file: bool = False) -> str:
-        """ Transcribe the provided audio data using the Whisper API. """
+        """Transcribe the provided audio data using the Whisper API."""
 
         # Create a temporary file to store the audio data
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
@@ -65,7 +64,9 @@ class WhisperSpeechTranscription(Transcription):
         try:
             # Transcribe the audio file
             with open(temp_file.name, "rb") as f:
+                logging.info(f"\n\n-----------------------------------------------------------")
                 response = openai.Audio.transcribe("whisper-1", file=f)
+                logging.info(f"\n\n--------------------------{response}---------------------------------")
 
             # Check for transcription text in the response
             if response.text:
@@ -82,13 +83,14 @@ class WhisperSpeechTranscription(Transcription):
 
         return transcription
 
+
 class TranscriptionService:
-    def __init__(self, method: str):
+    def __init__(self, method: str, config):
         self.strategy = None
         if method == "google":
             self.strategy = GoogleSpeechTranscription()
         elif method == "whisper":
-            self.strategy = WhisperSpeechTranscription()
+            self.strategy = WhisperSpeechTranscription(config.OPENAI_API_KEY)
         else:
             raise ValueError(f"Unsupported transcription method: {method}")
 

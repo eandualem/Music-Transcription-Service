@@ -4,6 +4,7 @@ import numpy as np
 from Scoring.dtw_helper import DTWHelper
 from typing import Callable, Dict
 from Levenshtein import distance as levenshtein_distance
+import logging
 
 
 class AudioScorer:

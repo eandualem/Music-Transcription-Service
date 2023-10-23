@@ -14,3 +14,4 @@
 *.pem
 **/data
 **/proto/Generated
+**/id_rsa

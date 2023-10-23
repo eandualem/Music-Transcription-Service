@@ -15,12 +15,8 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy only necessary files
-# COPY AIProcessingService/sa_speech_test.json ./sa_speech_test.json
 COPY AIProcessingService/ .
+COPY Scoring /app/Scoring
 COPY proto/Generated/Declarations/ /app/Declarations/
 
 CMD ["python", "server.py"]
-
-
-
-
