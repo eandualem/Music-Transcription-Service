@@ -1,10 +1,10 @@
-from Scoring.transcription_service import TranscriptionService
-from Scoring.karaoke_data import KaraokeData
-from Scoring.audio_scorer import AudioScorer
-from Scoring.audio_preprocessor import AudioPreprocessor
-from typing import List, Dict
-import numpy as np
 import logging
+import numpy as np
+from typing import List, Dict
+from Scoring.audio_scorer import AudioScorer
+from Scoring.karaoke_data import KaraokeData
+from Scoring.audio_preprocessor import AudioPreprocessor
+from Scoring.transcription_service import TranscriptionService
 
 
 class Pipeline:
@@ -27,7 +27,7 @@ class Pipeline:
         # Initialize components
         self.ap = AudioPreprocessor()
         self.audio_scorer = AudioScorer(
-            TranscriptionService(method=transcription_method, config=config), config, "dtaidistance_fast"
+            TranscriptionService(method=transcription_method, config=config), config, "fastdtw"
         )
         self.karaoke_data = self._initialize_karaoke_data(original_audio, track_audio, raw_lyrics_data, sr)
 
@@ -122,7 +122,7 @@ class Pipeline:
         """Compute scores for processed audio data."""
         logging.info(f"\n\n{self.karaoke_data.get_lyrics()}")
         return self.audio_scorer.process_audio_chunk(
-            processed_audio_chunk_data, processed_original_data, self.karaoke_data.get_lyrics(), self.sr, False
+            processed_audio_chunk_data, processed_original_data, self.karaoke_data.get_lyrics(), self.sr
         )
 
     def _calculate_weighted_score(self, scores) -> float:

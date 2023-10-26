@@ -1,10 +1,13 @@
 *.log
 *.csv
 *.wav
+*.mp3
+*.xlsx
 *.ipynb_checkpoints
 *.env
 *.cache
 *.DS_Store
+*__MACOSX
 *.vscode
 **/sa_speech_test.json
 **/__pycache__

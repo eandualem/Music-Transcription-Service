@@ -1,11 +1,5 @@
-import os
-import io
 import openai
 import logging
-import librosa
-import tempfile
-import numpy as np
-import scipy.io.wavfile as wav
 from google.oauth2 import service_account
 from google.cloud import speech_v1 as speech
 
@@ -13,24 +7,26 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Transcription:
-    def transcribe(self, audio_data: np.ndarray, sr: int, from_file: bool = False) -> str:
+    def transcribe(self, wav_file_path: str) -> str:
         raise NotImplementedError
 
 
 class GoogleSpeechTranscription(Transcription):
     def __init__(self):
-        client_file = "./Scoring/sa_speech_test.json"
+        client_file = "./sa_speech_test.json"
         credentials = service_account.Credentials.from_service_account_file(client_file)
         self.client = speech.SpeechClient(credentials=credentials)
 
-    def transcribe(self, audio_data: np.ndarray, sr: int, from_file: bool = False) -> str:
-        audio_content = np.int16(audio_data * 32767).tobytes()
+    def transcribe(self, wav_file_path: str) -> str:
+        # Read the audio file
+        with open(wav_file_path, "rb") as audio_file:
+            audio_content = audio_file.read()
 
         # Prepare the audio and config objects for the API request
         audio = speech.RecognitionAudio(content=audio_content)
         config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=sr,
+            sample_rate_hertz=8000,
             language_code="en-US",
             model="video",
         )
@@ -38,9 +34,18 @@ class GoogleSpeechTranscription(Transcription):
         # Make the API request
         try:
             response = self.client.recognize(config=config, audio=audio)
+            # logging.info(f"Google API Response: {response}")
+
             if response.results:
-                transcription = response.results[0].alternatives[0].transcript
-                return transcription
+                transcription = None
+                for result in response.results:
+                    for alternative in result.alternatives:
+                        if alternative.transcript:
+                            transcription = alternative.transcript
+                            break  # Exit inner loop once a transcript is found
+                    if transcription:
+                        break  # Exit outer loop if a transcript was found in inner loop
+
             else:
                 logging.warning("No transcription results returned from Google Speech API.")
                 return ""
@@ -51,22 +56,14 @@ class GoogleSpeechTranscription(Transcription):
 
 class WhisperSpeechTranscription(Transcription):
     def __init__(self, api_key):
-        logging.info(f"\n\n--------------------------{api_key}---------------------------------")
         openai.api_key = api_key
 
-    def transcribe(self, audio_data: np.ndarray, sr: int, from_file: bool = False) -> str:
+    def transcribe(self, wav_file_path: str) -> str:
         """Transcribe the provided audio data using the Whisper API."""
-
-        # Create a temporary file to store the audio data
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
-            wav.write(temp_file.name, sr, audio_data)
-
         try:
             # Transcribe the audio file
-            with open(temp_file.name, "rb") as f:
-                logging.info(f"\n\n-----------------------------------------------------------")
+            with open(wav_file_path, "rb") as f:
                 response = openai.Audio.transcribe("whisper-1", file=f)
-                logging.info(f"\n\n--------------------------{response}---------------------------------")
 
             # Check for transcription text in the response
             if response.text:
@@ -77,9 +74,6 @@ class WhisperSpeechTranscription(Transcription):
         except Exception as e:
             logging.error(f"Error transcribing audio: {e} 🚫")
             transcription = ""
-        finally:
-            # Ensure temporary file is deleted
-            os.remove(temp_file.name)
 
         return transcription
 
@@ -94,5 +88,5 @@ class TranscriptionService:
         else:
             raise ValueError(f"Unsupported transcription method: {method}")
 
-    def transcribe(self, audio_data: np.ndarray, sr: int, from_file: bool = False) -> str:
-        return self.strategy.transcribe(audio_data, sr, from_file)
+    def transcribe(self, wav_file_path: str) -> str:
+        return self.strategy.transcribe(wav_file_path)

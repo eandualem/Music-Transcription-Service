@@ -6,6 +6,9 @@ from google.protobuf.duration_pb2 import Duration
 from data_loader import DataLoader
 from Declarations.Model.AIProcessingService import AIProcessingResponse_pb2
 from datetime import datetime
+import time
+from pydub import AudioSegment
+import io
 
 
 class AudioProcessor:
@@ -21,11 +24,12 @@ class AudioProcessor:
             initial_data.lyrics_download_url, initial_data.track_download_url, initial_data.voice_helper_download_url
         )
         lyrics_data, original_audio, background_track = data_loader.get_data()
+
         self.pipeline = Pipeline(
             original_audio=original_audio,
             track_audio=background_track,
             raw_lyrics_data=lyrics_data,
-            sr=44100,
+            sr=8000,
             transcription_method="whisper",
             score_weights=self.config.SCORE_WEIGHTS,
             pipelines=self.config.PREPROCESSING_PIPELINE,
@@ -51,16 +55,30 @@ class AudioProcessor:
         response.status_code = status_code
         return response
 
+    def resample_audio(self, audio_bytes):
+        audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes), format="wav")
+        resampled_audio_segment = audio_segment.set_frame_rate(8000)
+        return resampled_audio_segment.raw_data
+
+    def time_function(self, func, *args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        return result, int(elapsed_time)
+
     def process_audio_chunk(self, request):
         user_audio_chunk = request.audio_chunk.audio_data
+        user_audio_chunk = self.resample_audio(user_audio_chunk)
         self.log.debug(f"Received audio chunk of length {len(user_audio_chunk)}")
-        score, average_score, feedback = self.pipeline.process_and_score(user_audio_chunk)
 
-        self.log.info(f"\nHandling Finalize request with reason: {score}")
-        self.log.info(f"Handling Finalize request with reason: {feedback}")
+        score, average_score, feedback = self.pipeline.process_and_score(user_audio_chunk)
+        (score, average_score, feedback), elapsed_time = self.time_function(
+            self.pipeline.process_and_score, user_audio_chunk
+        )
 
         # Construct the response and return
-        response = self._create_processing_response(score, average_score, int(len(user_audio_chunk) / 44100))
+        response = self._create_processing_response(score, average_score, elapsed_time)
 
         # response.feedback = feedback
         return response
@@ -99,7 +117,9 @@ class AudioProcessor:
         end_time = datetime.now()
         average_score, feedback = self.pipeline.final_score()
 
-        report = self._create_report_feedback(average_score, feedback, int(self.start_time.timestamp()), int(end_time.timestamp()), average_score)
+        report = self._create_report_feedback(
+            average_score, feedback, int(self.start_time.timestamp()), int(end_time.timestamp()), average_score
+        )
         self.private_interface_client.report_processing_result(report, self.client_token)
         return AIProcessingResponse_pb2.AIProcessingResponse(report=report)
 

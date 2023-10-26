@@ -12,3 +12,6 @@ scipy
 Levenshtein
 openai
 pyyaml
+fuzzywuzzy
+soundfile
+pydub
