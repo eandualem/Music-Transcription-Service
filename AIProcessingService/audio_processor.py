@@ -72,7 +72,6 @@ class AudioProcessor:
         user_audio_chunk = self.resample_audio(user_audio_chunk)
         self.log.debug(f"Received audio chunk of length {len(user_audio_chunk)}")
 
-        score, average_score, feedback = self.pipeline.process_and_score(user_audio_chunk)
         (score, average_score, feedback), elapsed_time = self.time_function(
             self.pipeline.process_and_score, user_audio_chunk
         )

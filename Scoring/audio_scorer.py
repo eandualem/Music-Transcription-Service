@@ -9,6 +9,7 @@ from typing import Callable, Dict
 from tempfile import NamedTemporaryFile
 from Scoring.dtw_helper import DTWHelper
 from Levenshtein import distance as levenshtein_distance
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class AudioScorer:
@@ -24,7 +25,6 @@ class AudioScorer:
             "pitch_score": self.pitch_matching_score,
             "rhythm_score": self.rhythm_score,
         }
-        self.user_transcription = ""  # temp variable not to transcribe twice
 
     def _extract_kwargs(self, **kwargs) -> tuple:
         """Extract common keyword arguments."""
@@ -149,6 +149,26 @@ class AudioScorer:
         reference_onset_env = librosa.onset.onset_strength(y=reference_audio_resampled)
         return self.compute_dtw_score(user_onset_env, reference_onset_env, tolerance)
 
+    def parallel_transcription(self, user_audio, original_audio, sr):
+        """Conducts parallel transcription for user and original audio."""
+        user_audio_file = self.save_audio_to_file(user_audio, sr)
+        original_audio_file = self.save_audio_to_file(original_audio, sr)
+        with ThreadPoolExecutor() as executor:
+            future_user_transcription = executor.submit(self.transcriber.transcribe, user_audio_file)
+            future_original_transcription = executor.submit(self.transcriber.transcribe, original_audio_file)
+        os.remove(user_audio_file)
+        os.remove(original_audio_file)
+        return future_user_transcription.result(), future_original_transcription.result()
+
+    def score_function_wrapper(self, score_name, scoring_function, user_audio, **kwargs):
+        """Wrapper function to execute scoring functions and handle exceptions."""
+        try:
+            score_value = scoring_function(user_audio, **kwargs)
+            return score_name, score_value
+        except Exception as e:
+            logging.error(f"Error computing {score_name}: {e}")
+            return score_name, 0.0
+
     def process_audio_chunk(
         self,
         processed_audio_chunk_data: Dict[str, np.ndarray],
@@ -156,16 +176,58 @@ class AudioScorer:
         actual_lyrics: str,
         sr: int,
     ) -> Dict[str, float]:
-        """Compute scores for an audio chunk."""
+        """Compute scores for an audio chunk in parallel."""
         scores = {}
-        for score_name, scoring_function in self.scoring_functions.items():
-            kwargs = {
-                "sr": sr,
-                "actual_lyrics": actual_lyrics,
-                "reference_audio": processed_original_data[score_name],
+
+        with ThreadPoolExecutor() as executor:
+            # Dispatch the three scoring functions that do not require transcription.
+            future_to_score = {
+                executor.submit(
+                    self.score_function_wrapper,
+                    score_name,
+                    scoring_function,
+                    processed_audio_chunk_data[score_name],
+                    sr=sr,
+                    actual_lyrics=actual_lyrics,
+                    reference_audio=processed_original_data[score_name],
+                ): score_name
+                for score_name, scoring_function in self.scoring_functions.items()
+                if score_name in ["amplitude_score", "pitch_score", "rhythm_score"]
             }
 
-            user_audio = processed_audio_chunk_data[score_name]
-            scores[score_name] = scoring_function(user_audio, **kwargs)
-            logging.info(f"\n\n{score_name} {scores}")
+            # Concurrently initiate the transcription task.
+            future_transcription = executor.submit(
+                self.parallel_transcription,
+                processed_audio_chunk_data["linguistic_accuracy_score"],
+                processed_original_data["linguistic_similarity_score"],
+                sr,
+            )
+
+            # As transcription completes, dispatch the linguistic scoring functions.
+            user_transcription, original_transcription = future_transcription.result()
+            for score_name, scoring_function in self.scoring_functions.items():
+                if score_name in ["linguistic_accuracy_score", "linguistic_similarity_score"]:
+                    future = executor.submit(
+                        self.score_function_wrapper,
+                        score_name,
+                        scoring_function,
+                        processed_audio_chunk_data[score_name],
+                        sr=sr,
+                        actual_lyrics=actual_lyrics,
+                        reference_audio=processed_original_data[score_name],
+                        user_transcription=user_transcription,
+                        original_transcription=original_transcription,
+                    )
+                    future_to_score[future] = score_name
+
+            # Harvest the results as they complete.
+            for future in as_completed(future_to_score):
+                score_name = future_to_score[future]
+                try:
+                    score_key, score_value = future.result()
+                    scores[score_key] = score_value
+                except Exception as exc:
+                    logging.error(f"{score_name} generated an exception: {exc}")
+
+        logging.info(f"\n\nScores: {scores}")
         return scores

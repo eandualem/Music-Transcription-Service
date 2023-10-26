@@ -13,7 +13,7 @@ class DTWHelper:
     @staticmethod
     def tolerance_euclidean(x, y, tolerance: float) -> float:
         """Custom Euclidean distance function with an optional tolerance."""
-        return np.clip(euclidean(x, y), 0, tolerance)
+        return np.clip(np.linalg.norm(x - y), 0, tolerance)
 
     @staticmethod
     def compute_normalized_distance(distance: float, total_length: int) -> float:
@@ -56,8 +56,8 @@ class DTWHelper:
         seq1: np.ndarray, seq2: np.ndarray, tolerance: float, total_length: int
     ) -> float:
         """Compute DTW similarity between two sequences using dtaidistance (fast approximation)."""
-        seq1 = seq1.astype(np.float64)
-        seq2 = seq2.astype(np.float64)
+        # seq1 = seq1.astype(np.float64)
+        # seq2 = seq2.astype(np.float64)
 
         options = {"window": int(max(len(seq1), len(seq2)) * tolerance), "use_c": True}
         distance = dtaidistance.dtw.distance(seq1, seq2, **options)

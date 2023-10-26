@@ -38,18 +38,19 @@ class KaraokeData:
         return self._transform_lyrics(lyrics_within_interval)
 
     def _transform_lyrics(self, lyrics_list):
-        transformed_lyrics = ""
+        transformed_lyrics = []
         word = ""
         for syllable in lyrics_list:
             if "\\n" in syllable:
                 parts = syllable.split("\\n")
                 word += parts[0]
-                transformed_lyrics += word.strip() + "\n"
+                transformed_lyrics.append(word.strip())
+                transformed_lyrics.append("\n")  # appending newline as a separate string
                 word = parts[1] + " "
             else:
                 word += syllable + " "
-        transformed_lyrics += word.strip()
-        return transformed_lyrics
+        transformed_lyrics.append(word.strip())
+        return ''.join(transformed_lyrics)
 
     def _parse_lyrics(self, raw_lyrics: pd.DataFrame) -> List[Dict[str, Union[float, str]]]:
         """Converts raw CSV lyrics into a structured format."""
