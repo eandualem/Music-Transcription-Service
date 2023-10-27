@@ -10,6 +10,7 @@ from tempfile import NamedTemporaryFile
 from Scoring.dtw_helper import DTWHelper
 from Levenshtein import distance as levenshtein_distance
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import io
 
 
 class AudioScorer:
@@ -41,6 +42,22 @@ class AudioScorer:
         return temp_file_path
 
     @staticmethod
+    def save_audio_to_memory(audio_data: np.ndarray, sample_rate: int) -> io.BytesIO:
+        """
+        Save the audio data to an in-memory file.
+        """
+        # Create a BytesIO object
+        in_memory_file = io.BytesIO()
+
+        # Write the audio data to the in-memory file
+        sf.write(in_memory_file, audio_data, sample_rate, format="WAV")
+
+        # Seek to the beginning of the in-memory file so it's ready for reading
+        in_memory_file.seek(0)
+
+        return in_memory_file
+
+    @staticmethod
     def _levenshtein_similarity(text1: str, text2: str) -> float:
         """Compute Levenshtein similarity between two strings."""
         distance = levenshtein_distance(text1.lower().strip(), text2.lower().strip())
@@ -51,32 +68,24 @@ class AudioScorer:
         """Compute lenient similarity between two strings using FuzzyWuzzy's partial_ratio."""
         return fuzz.partial_ratio(text1.lower().strip(), text2.lower().strip()) / 100.0
 
-    def linguistic_accuracy_score(self, user_audio: np.ndarray, **kwargs) -> float:
+    def linguistic_accuracy_score(self, user_transcription: str, actual_lyrics: str) -> float:
         """Linguistic accuracy based on transcribed text."""
-        sr = kwargs.get("sr")
-        actual_lyrics = kwargs.get("actual_lyrics")
+        logging.info(f"Respooons user_transcription: {user_transcription}")
 
         try:
-            audio_file = self.save_audio_to_file(user_audio, sr)
-            user_transcription = self.transcriber.transcribe(audio_file)
-            os.remove(audio_file)
-            self.user_transcription = user_transcription
             return self._lenient_similarity(user_transcription, actual_lyrics)
         except Exception as e:
             logging.error(f"Linguistic accuracy computation failed: {e}")
             return 0.0
 
     def linguistic_similarity_with_original(
-        self, user_audio: np.ndarray, reference_audio: np.ndarray, **kwargs
+        self,
+        user_transcription: str,
+        original_transcription: str,
     ) -> float:
         """Compute linguistic similarity with the original singer's transcription."""
-        sr = kwargs.get("sr")
-
         try:
-            audio_file = self.save_audio_to_file(reference_audio, sr)
-            original_transcription = self.transcriber.transcribe(audio_file)
-            os.remove(audio_file)
-            return self._lenient_similarity(self.user_transcription, original_transcription)
+            return self._lenient_similarity(user_transcription, original_transcription)
         except Exception as e:
             logging.error(f"Linguistic accuracy computation failed: {e}")
             return 0.0
@@ -96,7 +105,7 @@ class AudioScorer:
         """Amplitude matching score."""
         sr = self._extract_kwargs(**kwargs)
 
-        scale = 64
+        scale = 16
         tolerance = 0.00005
 
         user_audio_downsampled = self._resample_audio(user_audio, sr, sr // scale)
@@ -109,7 +118,7 @@ class AudioScorer:
         """Pitch matching score."""
         sr = self._extract_kwargs(**kwargs)
 
-        scale = 4
+        scale = 2
         tolerance = 0.5
 
         user_audio_resampled = self._resample_audio(user_audio, sr, sr // scale)
@@ -140,7 +149,7 @@ class AudioScorer:
         """Rhythm score."""
         sr = self._extract_kwargs(**kwargs)
 
-        scale = 8
+        scale = 4
         tolerance = 0.05
 
         user_audio_resampled = self._resample_audio(user_audio, sr, sr // scale)
@@ -158,6 +167,7 @@ class AudioScorer:
             future_original_transcription = executor.submit(self.transcriber.transcribe, original_audio_file)
         os.remove(user_audio_file)
         os.remove(original_audio_file)
+
         return future_user_transcription.result(), future_original_transcription.result()
 
     def score_function_wrapper(self, score_name, scoring_function, user_audio, **kwargs):
@@ -205,20 +215,12 @@ class AudioScorer:
 
             # As transcription completes, dispatch the linguistic scoring functions.
             user_transcription, original_transcription = future_transcription.result()
-            for score_name, scoring_function in self.scoring_functions.items():
-                if score_name in ["linguistic_accuracy_score", "linguistic_similarity_score"]:
-                    future = executor.submit(
-                        self.score_function_wrapper,
-                        score_name,
-                        scoring_function,
-                        processed_audio_chunk_data[score_name],
-                        sr=sr,
-                        actual_lyrics=actual_lyrics,
-                        reference_audio=processed_original_data[score_name],
-                        user_transcription=user_transcription,
-                        original_transcription=original_transcription,
-                    )
-                    future_to_score[future] = score_name
+
+            # Directly calling the linguistic scoring functions
+            scores["linguistic_accuracy_score"] = self.linguistic_accuracy_score(user_transcription, actual_lyrics)
+            scores["linguistic_similarity_score"] = self.linguistic_similarity_with_original(
+                user_transcription, original_transcription
+            )
 
             # Harvest the results as they complete.
             for future in as_completed(future_to_score):

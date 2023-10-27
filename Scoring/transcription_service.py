@@ -2,6 +2,7 @@ import openai
 import logging
 from google.oauth2 import service_account
 from google.cloud import speech_v1 as speech
+import io
 
 logging.basicConfig(level=logging.INFO)
 
