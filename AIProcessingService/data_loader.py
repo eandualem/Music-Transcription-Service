@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 from pydub import AudioSegment
 from concurrent.futures import ThreadPoolExecutor
+import torchaudio
 
 
 class DataLoader:
@@ -39,6 +40,18 @@ class DataLoader:
         audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes), format="wav")
         resampled_audio_segment = audio_segment.set_frame_rate(8000)
         return resampled_audio_segment.raw_data
+
+    # def _resample_audio(self, audio_bytes):
+    #     """Resample audio data to 8000 Hz using torchaudio."""
+    #     # Load audio data from bytes
+    #     audio_tensor, orig_sample_rate = torchaudio.load(io.BytesIO(audio_bytes))
+    #     # Resample the audio to 8000 Hz
+    #     resampler = torchaudio.transforms.Resample(orig_freq=orig_sample_rate, new_freq=8000)
+    #     resampled_audio_tensor = resampler(audio_tensor)
+    #     # Convert the tensor back to bytes
+    #     resampled_audio_bytes = io.BytesIO()
+    #     torchaudio.save(resampled_audio_bytes, resampled_audio_tensor, sample_rate=8000, format="wav")
+    #     return resampled_audio_bytes.getvalue()
 
     def _download_and_resample(self, url):
         """Download and resample audio data concurrently."""

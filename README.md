@@ -106,6 +106,8 @@ Please make sure to place the `.env` and `config.yaml` files in the appropriate 
 
 ## System Architecture 🏗️
 
+![Screenshot](img/architecture.png)
+
 ### AIProcessingService
 
 The AIProcessingService receives audio chunks from clients and coordinates with AIPrivateInterfaceService to get essential data like lyrics and original audio. It uses the Scoring module to evaluate each audio chunk and provides real-time updates to the client. When the client sends a "finalize" request, it calculates the average score and feedback to send back to both the client and AIPrivateInterfaceService.

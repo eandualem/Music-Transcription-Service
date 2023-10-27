@@ -70,7 +70,6 @@ class AudioProcessor:
     def process_audio_chunk(self, request):
         user_audio_chunk = request.audio_chunk.audio_data
         user_audio_chunk = self.resample_audio(user_audio_chunk)
-        self.log.debug(f"Received audio chunk of length {len(user_audio_chunk)}")
 
         (score, average_score, feedback), elapsed_time = self.time_function(
             self.pipeline.process_and_score, user_audio_chunk
@@ -94,7 +93,6 @@ class AudioProcessor:
             AIProcessingResponse: The constructed response.
         """
 
-        self.log.info("Creating AIProcessingResponse AudioChunk")
         review = AIProcessingResponse_pb2.AIProcessingResponse()
         review.live_review.instant_score = instant_score
         review.live_review.average_score = average_score

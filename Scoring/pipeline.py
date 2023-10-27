@@ -76,6 +76,9 @@ class Pipeline:
 
     def process_and_score(self, audio_chunk: np.array) -> Dict[str, float]:
         """Process and score a single audio chunk."""
+
+        # logging.info(f"Received audio chunk of length 1 {len(audio_chunk)}")
+
         if not self.initialized:
             self.karaoke_data.align_audio(audio_chunk, method="start")
             self.initialized = True
@@ -89,7 +92,10 @@ class Pipeline:
             audio_chunk = np.nan_to_num(audio_chunk)
             # Handle accordingly, maybe raise an exception or return
 
-        original_segment, reference_audio = self.karaoke_data.get_next_segment(len(audio_chunk))
+        # logging.info(f"Received audio chunk of length 2 {len(audio_chunk)}")
+        original_segment, reference_audio = self.karaoke_data.get_next_segment(len(audio_chunk) * 2)
+        # logging.info(f"original_segment {len(original_segment)}")
+        # logging.info(f"reference_audio {len(reference_audio)}")
 
         original_segment = self._convert_to_numpy_array(original_segment, True)
         reference_audio = self._convert_to_numpy_array(reference_audio, True)
@@ -120,7 +126,7 @@ class Pipeline:
         self, processed_audio_chunk_data: Dict[str, np.array], processed_original_data: Dict[str, np.array]
     ) -> Dict[str, float]:
         """Compute scores for processed audio data."""
-        logging.info(f"\n\n{self.karaoke_data.get_lyrics()}")
+        # logging.info(f"\n\n{self.karaoke_data.get_lyrics()}")
         return self.audio_scorer.process_audio_chunk(
             processed_audio_chunk_data, processed_original_data, self.karaoke_data.get_lyrics(), self.sr
         )

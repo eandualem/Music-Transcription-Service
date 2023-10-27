@@ -18,7 +18,7 @@ class AudioScorer:
 
     def __init__(self, transcriber: Callable, config, dtw_method: str = "fastdtw"):
         self.transcriber = transcriber
-        self.dtw_helper = DTWHelper(method=dtw_method)
+        self.dtw_helper = DTWHelper(method=dtw_method, parallel=False)
         self.scoring_functions = {
             "linguistic_accuracy_score": self.linguistic_accuracy_score,
             "linguistic_similarity_score": self.linguistic_similarity_with_original,
@@ -70,7 +70,7 @@ class AudioScorer:
 
     def linguistic_accuracy_score(self, user_transcription: str, actual_lyrics: str) -> float:
         """Linguistic accuracy based on transcribed text."""
-        logging.info(f"Respooons user_transcription: {user_transcription}")
+        # logging.info(f"Respooons user_transcription: {user_transcription}")
 
         try:
             return self._lenient_similarity(user_transcription, actual_lyrics)
@@ -84,6 +84,7 @@ class AudioScorer:
         original_transcription: str,
     ) -> float:
         """Compute linguistic similarity with the original singer's transcription."""
+        # logging.info(f"Respooons original_transcription: {original_transcription}")
         try:
             return self._lenient_similarity(user_transcription, original_transcription)
         except Exception as e:
@@ -104,12 +105,21 @@ class AudioScorer:
     def amplitude_matching_score(self, user_audio: np.ndarray, reference_audio: np.ndarray, **kwargs) -> float:
         """Amplitude matching score."""
         sr = self._extract_kwargs(**kwargs)
-
-        scale = 16
+        # logging.info(
+        #     f"audio recieved shape user: {user_audio.shape}, audio recieved shape ref: {reference_audio.shape}"
+        # )
+        scale = 128
         tolerance = 0.00005
 
         user_audio_downsampled = self._resample_audio(user_audio, sr, sr // scale)
         reference_audio_downsampled = self._resample_audio(reference_audio, sr, sr // scale)
+        # logging.info(
+        #     f"amplitude_matching_score = user audio len: {len(user_audio_downsampled.flatten())}, ref audio len: {len(reference_audio_downsampled.flatten())}"
+        # )
+        # logging.info(
+        #     f"amplitude_matching_score = user audio shape: {user_audio_downsampled.flatten().shape}, ref audio shape: {reference_audio_downsampled.flatten().shape}"
+        # )
+
         return self.compute_dtw_score(
             user_audio_downsampled.flatten(), reference_audio_downsampled.flatten(), tolerance
         )
@@ -118,7 +128,7 @@ class AudioScorer:
         """Pitch matching score."""
         sr = self._extract_kwargs(**kwargs)
 
-        scale = 2
+        scale = 4
         tolerance = 0.5
 
         user_audio_resampled = self._resample_audio(user_audio, sr, sr // scale)
@@ -134,6 +144,10 @@ class AudioScorer:
         # Carry forward last observation to replace NaN values
         user_pitch = pd.Series(user_pitch).ffill().bfill().values
         reference_pitch = pd.Series(reference_pitch).ffill().bfill().values
+        # logging.info(f"pitch_matching_score = user pitch len: {len(user_pitch)}, ref pitch len: {len(reference_pitch)}")
+        # logging.info(
+        #     f"pitch_matching_score = user pitch shape: {user_pitch.shape}, ref pitch shape: {reference_pitch.shape}"
+        # )
 
         # Handling no pitch detected scenarios
         if np.all(np.isnan(user_pitch)) and np.all(np.isnan(reference_pitch)):
@@ -156,6 +170,11 @@ class AudioScorer:
         reference_audio_resampled = self._resample_audio(reference_audio, sr, sr // scale)
         user_onset_env = librosa.onset.onset_strength(y=user_audio_resampled)
         reference_onset_env = librosa.onset.onset_strength(y=reference_audio_resampled)
+        # logging.info(f"rhythm_score = user audio len: {len(user_onset_env)}, ref audio len: {len(reference_onset_env)}")
+        # logging.info(
+        #     f"rhythm_score = user audio shape: {user_onset_env.shape}, ref audio len: {reference_onset_env.shape}"
+        # )
+
         return self.compute_dtw_score(user_onset_env, reference_onset_env, tolerance)
 
     def parallel_transcription(self, user_audio, original_audio, sr):
@@ -231,5 +250,5 @@ class AudioScorer:
                 except Exception as exc:
                     logging.error(f"{score_name} generated an exception: {exc}")
 
-        logging.info(f"\n\nScores: {scores}")
+        # logging.info(f"\n\nScores: {scores}")
         return scores
