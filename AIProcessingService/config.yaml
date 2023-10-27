@@ -2,19 +2,19 @@
 
 # Weights for various scoring metrics
 ScoreWeights:
-  linguistic_accuracy_score: 0.2
-  linguistic_similarity_score: 0.2
-  amplitude_score: 0.2
-  pitch_score: 0.2
-  rhythm_score: 0.2
+  linguistic_accuracy_score: 0.5
+  linguistic_similarity_score: 0.5
+  # amplitude_score: 0.2
+  # pitch_score: 0.2
+  # rhythm_score: 0.2
 
 # Functions responsible for each scoring metric
 ScoringFunctions:
-  linguistic_accuracy_score: "linguistic_accuracy_score_function"
-  linguistic_similarity_score: "linguistic_similarity_score_function"
-  amplitude_score: "amplitude_score_function"
-  pitch_score: "pitch_score_function"
-  rhythm_score: "rhythm_score_function"
+  linguistic_accuracy_score: "linguistic_accuracy_score"
+  linguistic_similarity_score: "linguistic_similarity_with_original"
+  amplitude_score: "amplitude_matching_score"
+  pitch_score: "pitch_matching_score"
+  rhythm_score: "rhythm_score"
 
 # Preprocessing pipeline steps for each scoring metric
 PreprocessingPipeline:

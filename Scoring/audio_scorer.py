@@ -11,6 +11,7 @@ from Scoring.dtw_helper import DTWHelper
 from Levenshtein import distance as levenshtein_distance
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import io
+import traceback
 
 
 class AudioScorer:
@@ -20,12 +21,9 @@ class AudioScorer:
         self.transcriber = transcriber
         self.dtw_helper = DTWHelper(method=dtw_method, parallel=False)
         self.scoring_functions = {
-            "linguistic_accuracy_score": self.linguistic_accuracy_score,
-            "linguistic_similarity_score": self.linguistic_similarity_with_original,
-            "amplitude_score": self.amplitude_matching_score,
-            "pitch_score": self.pitch_matching_score,
-            "rhythm_score": self.rhythm_score,
+            score_type: getattr(self, config.SCORING_FUNCTIONS[score_type]) for score_type in config.SCORE_WEIGHTS
         }
+        logging.info(f"scoring_functions: {self.scoring_functions}")
 
     def _extract_kwargs(self, **kwargs) -> tuple:
         """Extract common keyword arguments."""
@@ -66,11 +64,15 @@ class AudioScorer:
     @staticmethod
     def _lenient_similarity(text1: str, text2: str) -> float:
         """Compute lenient similarity between two strings using FuzzyWuzzy's partial_ratio."""
+        if not isinstance(text1, str) or not isinstance(text2, str):
+            logging.error(f"Unexpected input types: text1: {type(text1)}, text2: {type(text2)}")
+            logging.error("".join(traceback.format_stack()))
+            return 0.0  # Or any other fallback behavior you deem appropriate
         return fuzz.partial_ratio(text1.lower().strip(), text2.lower().strip()) / 100.0
 
     def linguistic_accuracy_score(self, user_transcription: str, actual_lyrics: str) -> float:
         """Linguistic accuracy based on transcribed text."""
-        # logging.info(f"Respooons user_transcription: {user_transcription}")
+        logging.info(f"Respooons user_transcription: {user_transcription}")
 
         try:
             return self._lenient_similarity(user_transcription, actual_lyrics)
@@ -84,7 +86,7 @@ class AudioScorer:
         original_transcription: str,
     ) -> float:
         """Compute linguistic similarity with the original singer's transcription."""
-        # logging.info(f"Respooons original_transcription: {original_transcription}")
+        logging.info(f"Respooons original_transcription: {original_transcription}")
         try:
             return self._lenient_similarity(user_transcription, original_transcription)
         except Exception as e:
@@ -184,6 +186,11 @@ class AudioScorer:
         with ThreadPoolExecutor() as executor:
             future_user_transcription = executor.submit(self.transcriber.transcribe, user_audio_file)
             future_original_transcription = executor.submit(self.transcriber.transcribe, original_audio_file)
+
+        logging.info(
+            f"User transcription: {future_user_transcription.result()}, Original transcription: {future_original_transcription.result()}"
+        )
+
         os.remove(user_audio_file)
         os.remove(original_audio_file)
 
@@ -205,11 +212,22 @@ class AudioScorer:
         actual_lyrics: str,
         sr: int,
     ) -> Dict[str, float]:
-        """Compute scores for an audio chunk in parallel."""
+        logging.info("Nothing from here is bieng even called!")
         scores = {}
 
         with ThreadPoolExecutor() as executor:
-            # Dispatch the three scoring functions that do not require transcription.
+            # Initiate the transcription task first
+            future_transcription = executor.submit(
+                self.parallel_transcription,
+                processed_audio_chunk_data["linguistic_accuracy_score"],
+                processed_original_data["linguistic_similarity_score"],
+                sr,
+            )
+
+            # Ensure transcription completes before dispatching the linguistic scoring functions.
+            user_transcription, original_transcription = future_transcription.result()
+
+            # Now dispatch the other scoring functions conditionally based on ScoreWeights
             future_to_score = {
                 executor.submit(
                     self.score_function_wrapper,
@@ -224,18 +242,7 @@ class AudioScorer:
                 if score_name in ["amplitude_score", "pitch_score", "rhythm_score"]
             }
 
-            # Concurrently initiate the transcription task.
-            future_transcription = executor.submit(
-                self.parallel_transcription,
-                processed_audio_chunk_data["linguistic_accuracy_score"],
-                processed_original_data["linguistic_similarity_score"],
-                sr,
-            )
-
-            # As transcription completes, dispatch the linguistic scoring functions.
-            user_transcription, original_transcription = future_transcription.result()
-
-            # Directly calling the linguistic scoring functions
+            # Directly calling the linguistic scoring functions after transcription has completed
             scores["linguistic_accuracy_score"] = self.linguistic_accuracy_score(user_transcription, actual_lyrics)
             scores["linguistic_similarity_score"] = self.linguistic_similarity_with_original(
                 user_transcription, original_transcription
@@ -250,5 +257,5 @@ class AudioScorer:
                 except Exception as exc:
                     logging.error(f"{score_name} generated an exception: {exc}")
 
-        # logging.info(f"\n\nScores: {scores}")
+        logging.info(f"\n\n++Scores: {scores}")
         return scores

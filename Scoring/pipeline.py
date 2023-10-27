@@ -105,6 +105,7 @@ class Pipeline:
         processed_original_data = self._preprocess_audio(original_segment, "original", reference_audio=reference_audio)
 
         scores = self._compute_scores(processed_audio_chunk_data, processed_original_data)
+        logging.info(f"\n\nWoooow, we are done, we wre done {scores}")
         score = self._calculate_weighted_score(scores)
         feedback = self._generate_feedback(scores)
 
@@ -135,8 +136,14 @@ class Pipeline:
         """Calculates the overall weighted score."""
 
         weighted_score = 0.0
+        # logging.info(f"Scores -----: {scores}")
+        # logging.info(f"Weights -----: {self.score_weights}")
         for score_type, score_value in scores.items():
-            weighted_score += score_value * self.score_weights.get(score_type)
+            weight = self.score_weights.get(score_type)
+            if weight is None:
+                # logging.warning(f"No weight found for {score_type}. Skipping...")
+                continue
+            weighted_score += score_value * weight
 
         return weighted_score
 
@@ -147,16 +154,9 @@ class Pipeline:
         }
 
     def _generate_feedback(self, scores: Dict[str, float]) -> str:
-        """Generate feedback based on the given scores."""
-
-        # Identify the lowest score and its type
-        lowest_score_type = min(scores, key=scores.get)
-        lowest_score = scores[lowest_score_type]
-
-        # Provide feedback based on the lowest score if it's less than 0.8
-        if lowest_score < 0.8:
-            return self.config.FEEDBACK_MESSAGES[lowest_score_type]["low"]
-        else:
-            # If all scores are above 0.8, provide "high" feedback for the highest score
-            highest_score_type = max(scores, key=scores.get)
-            return self.config.FEEDBACK_MESSAGES[highest_score_type]["high"]
+        # Conditionally generating feedback based on computed scores
+        for score_name, feedback_messages in self.config.FEEDBACK_MESSAGES.items():
+            if score_name in scores:  # Only provide feedback for computed scores
+                score_value = scores[score_name]
+                feedback_type = "high" if score_value >= 0.8 else "low"
+                return feedback_messages[feedback_type]
